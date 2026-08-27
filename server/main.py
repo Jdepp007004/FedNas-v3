@@ -164,6 +164,7 @@ async def status():
     return JSONResponse(status_code=200, content={
         "status":         "ok",
         "ngrok_url":      tunnel_url,
+        "host_agent_url": os.environ.get("FL_HOST_AGENT_URL", ""),
         "server_version": SERVER_VERSION,
     })
 

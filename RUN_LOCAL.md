@@ -55,45 +55,33 @@ From the repository root:
 python host_app.py
 ```
 
-Open `http://localhost:8000/host` on the host machine. The terminal prints the
-public `https://...ngrok...` URL when ngrok is enabled. Share that URL with
-friends. The client control page is available at:
+The host console opens automatically at `http://localhost:8000/host`. The
+terminal also prints the public `https://...ngrok...` URL when ngrok is
+enabled. Share that URL with friends. The client control page is available at:
 
 ```text
 https://YOUR_NGROK_URL/client
 ```
 
-Friends can also open `client/client.html` locally and enter the same URL.
-The host page opens directly—there is no host sign-in step.
+The host page opens directly—there is no host sign-in step and no project ID to
+enter.
 
 ## Client workflow
 
-1. Run `python client_app.py` to open the client page, or open
-   `https://YOUR_NGROK_URL/client`.
+1. Run only `python client_app.py`. The local client page opens automatically.
 2. Enter a name (for example `Client 1`) and the host's ngrok URL, then click
-   **Connect and request access**.
-3. Choose the project.
-4. Select the assigned `split_data/client_N.csv`. The browser reads it locally
-   and sends metadata only.
-5. Set available and dedicated RAM/CPU, then request access if needed.
-6. The host approves the request by the displayed name in `/host`.
-7. Run the native trainer command shown by the client page.
-
-Example for a teammate:
-
-```powershell
-python client_app.py `
-  --server https://YOUR_NGROK_URL `
-  --name "Client 1" `
-  --csv split_data\client_2.csv `
-  --proj PROJECT_ID `
-  --dedicated-ram 4 `
-  --dedicated-cores 2
-```
+   **Connect and request access**. The project is selected automatically.
+3. The page shows the client's real available RAM/CPU when the local agent is
+   running. Enter the RAM and CPU amount to dedicate.
+4. Select the assigned `split_data/client_N.csv`. The file is copied only to
+   this laptop; it is never uploaded to the host.
+5. The host approves the request by the displayed name in `/host`.
+6. After approval, the native worker starts automatically. No project ID,
+   generated command, username, or password is needed.
 
 The native client detects available RAM/CPU with `psutil` when installed and
-posts its explicit contribution cap. It trains locally, encrypts model
-weights, and sends only the update to the host.
+uses the contribution values entered in the page. It trains locally, encrypts
+model weights, and sends only the update to the host.
 
 For a teammate's machine, create an untracked `client.env` containing the
 same `FL_ENCRYPTION_KEY` from the host's `.env` (share that one value privately)
@@ -108,21 +96,9 @@ The ngrok token and host JWT secret do not need to be shared with clients.
 
 ## Make the host a participant
 
-The host console includes a ready-made command. Run it in a second host
-terminal after approving the host participant:
-
-```powershell
-python client_app.py `
-  --server http://localhost:8000 `
-  --name "Host" `
-  --csv split_data\client_1.csv `
-  --proj PROJECT_ID `
-  --dedicated-ram 4 `
-  --dedicated-cores 2
-```
-
-This is a real local training worker, not a browser simulation. Approve it in
-the host console like any other participant.
+In the host console, enter the host's available and dedicated resources and
+click **Start host participant**. It uses `split_data/client_1.csv`, appears in
+the approval table as `Host`, and starts real local training after approval.
 
 ## What the host sees
 

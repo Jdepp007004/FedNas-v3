@@ -183,8 +183,7 @@ $env:NGROK_AUTH_TOKEN  = "your_ngrok_token"
 
 # 3. Install & start
 pip install -r server/requirements.txt
-cd server
-python main.py
+python host_app.py
 ```
 
 Console output:
@@ -193,30 +192,27 @@ Console output:
 INFO:     Uvicorn running on http://0.0.0.0:8000
 ```
 
-- **Dashboard** → http://localhost:8000/dashboard
+- **Host console** → http://localhost:8000/host
+- **Client console** → opened automatically by `python client_app.py`
 - **API Docs** → http://localhost:8000/docs
 
-### Client — CLI
+### Client — no-command workflow
 
 ```powershell
 pip install -r client/requirements.txt
-
-python client/client_app.py `
-  --server   https://abc123.ngrok-free.app `
-  --username hospital_1 `
-  --password secret1 `
-  --hospital "City General Hospital" `
-  --email    admin@citygeneral.org `
-  --csv      data/client_1.csv `
-  --proj     YOUR_PROJECT_ID
+python client_app.py
 ```
 
-### Client — Browser UI
+The client page asks only for the participant name and host ngrok link. It
+automatically selects the host's open project, displays native available
+resources, accepts the dedicated RAM/CPU values, and starts the local worker
+after host approval. No project ID, account, password, or second command is
+needed.
 
-1. Open `https://YOUR_NGROK_URL/client` or `client/client.html` in any browser
-2. Follow the 4-step Material Design wizard:
-   - Connect → Auth → Upload CSV → Join Project
-3. Wait for server admin to approve → click **Start Training**
+1. Run `python client_app.py`.
+2. Enter the name and host ngrok link.
+3. Choose the local dataset split and resource contribution.
+4. Wait for host approval; training starts automatically.
 
 ### Docker (production server)
 

@@ -8,10 +8,12 @@ import sys
 import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
+from local_env import load_env_file  # noqa: E402
+
+load_env_file(os.environ.get("FL_ENV_FILE", os.path.join(os.path.dirname(__file__), "..", ".env")))
+
 import time  # noqa: E402
 import argparse  # noqa: E402
-import webbrowser  # noqa: E402
-from pathlib import Path  # noqa: E402
 
 from api_client import APIClient, ServerUnreachableError, AuthError  # noqa: E402
 from supernet import Supernet, load_global_weights  # noqa: E402
@@ -28,7 +30,7 @@ def parse_args():
     p.add_argument("--server",    required=True, help="ngrok server URL, e.g. https://xxx.ngrok.io")
     p.add_argument("--name",      required=True, help="Name shown to the host for approval")
     p.add_argument("--csv",       required=True, help="Path to local TCGA CSV file")
-    p.add_argument("--proj",      required=True, help="Project ID to join/participate in")
+    p.add_argument("--proj",      default=None, help=argparse.SUPPRESS)
     p.add_argument("--ram",       type=float, default=None, help="Override detected available RAM (GB)")
     p.add_argument("--cores",     type=int,   default=None, help="Override detected CPU cores")
     p.add_argument("--dedicated-ram", type=float, default=None, help="RAM cap to contribute (GB)")
@@ -78,6 +80,20 @@ def main():
     except Exception as e:
         print(f"[!] Could not create participant session: {e}")
         sys.exit(1)
+
+    # The default project is selected automatically.  ``--proj`` remains an
+    # internal/backwards-compatible override but is not needed by teammates.
+    if not args.proj:
+        try:
+            projects = client.list_projects()
+            project = next((item for item in projects if item.get("accepting_clients", True)), None)
+            if project is None:
+                raise RuntimeError("The host has no project accepting clients yet.")
+            args.proj = project["proj_id"]
+            print(f"[+] Project selected automatically: {project.get('name', args.proj)}")
+        except Exception as e:
+            print(f"[!] Could not find an open project: {e}")
+            sys.exit(1)
 
     # ── Schema Validation ─────────────────────────────────────────────────────
     print(f"[*] Validating CSV: {args.csv}")
@@ -217,9 +233,7 @@ def main():
 
 if __name__ == "__main__":
     if len(sys.argv) == 1:
-        ui_path = Path(__file__).resolve().parent / "client.html"
-        webbrowser.open(ui_path.as_uri())
-        print(f"Client UI opened: {ui_path}")
-        print("Enter your name and the host's ngrok URL, then request access.")
+        from local_agent import start_local_client_ui
+        start_local_client_ui()
     else:
         main()
