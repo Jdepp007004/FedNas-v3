@@ -84,12 +84,12 @@ uses the contribution values entered in the page. It trains locally, encrypts
 model weights, and sends only the update to the host.
 
 For a teammate's machine, create an untracked `client.env` containing the
-same `FL_ENCRYPTION_KEY` from the host's `.env` (share that one value privately)
-and run:
+same `FL_ENCRYPTION_KEY` from the host's `.env` (share that one value privately).
+The client launcher automatically loads `client.env` when `.env` is absent, so
+the teammate can then run:
 
 ```powershell
-$env:FL_ENV_FILE = "client.env"
-python client_app.py ...
+python client_app.py
 ```
 
 The ngrok token and host JWT secret do not need to be shared with clients.

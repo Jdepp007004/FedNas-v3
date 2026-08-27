@@ -15,15 +15,44 @@ from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 # ─── Key Management ──────────────────────────────────────────────────────────
 
+def encryption_key_status() -> tuple[bool, str]:
+    """Return whether the process has a valid shared AES-256 key.
+
+    The key is deliberately never returned by this helper. It is safe for
+    local status pages to expose only the boolean result and an explanation.
+    """
+    raw = os.environ.get("FL_ENCRYPTION_KEY", "").strip()
+    if not raw:
+        return False, "FL_ENCRYPTION_KEY is not configured."
+    try:
+        key = base64.b64decode(raw, validate=True)
+    except Exception:
+        return False, "FL_ENCRYPTION_KEY must be valid base64."
+    if len(key) != 32:
+        return False, "FL_ENCRYPTION_KEY must decode to exactly 32 bytes (AES-256)."
+    return True, ""
+
+
+def require_encryption_key() -> None:
+    """Fail clearly before training if the shared encryption key is missing."""
+    configured, detail = encryption_key_status()
+    if not configured:
+        raise ValueError(
+            f"{detail} Put the same host key in this machine's client.env before running the client."
+        )
+
 def _get_key() -> bytes:
     """
     Load or derive the AES-256 key (32 bytes) from the FL_ENCRYPTION_KEY
     environment variable.  The env var must be a base64-encoded 32-byte key.
     Falls back to an insecure all-zeros key (only suitable for development).
     """
-    raw = os.environ.get("FL_ENCRYPTION_KEY", "")
+    raw = os.environ.get("FL_ENCRYPTION_KEY", "").strip()
     if raw:
-        key = base64.b64decode(raw)
+        try:
+            key = base64.b64decode(raw, validate=True)
+        except Exception as exc:
+            raise ValueError("FL_ENCRYPTION_KEY must be valid base64.") from exc
         if len(key) != 32:
             raise ValueError(
                 "FL_ENCRYPTION_KEY must decode to exactly 32 bytes (AES-256)."

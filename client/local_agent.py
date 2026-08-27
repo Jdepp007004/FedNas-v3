@@ -22,6 +22,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlparse
 
+from shared.encryption import encryption_key_status
+
 
 CLIENT_DIR = Path(__file__).resolve().parent
 REPO_ROOT = CLIENT_DIR.parent
@@ -61,6 +63,7 @@ def _response_state() -> dict:
             "dataset_path": _state.get("dataset_path", ""),
             "message": _state.get("message", ""),
             "returncode": returncode,
+            "encryption_configured": encryption_key_status()[0],
         }
 
 
@@ -87,6 +90,7 @@ def _resources() -> dict:
         "available_cpu_cores": max(1, int(available_cpu_cores)),
         "gpu_available": gpu_available,
         "source": source,
+        "encryption_configured": encryption_key_status()[0],
     }
 
 
@@ -184,6 +188,11 @@ class _LocalHandler(BaseHTTPRequestHandler):
                 return
 
             if path == "/agent/start":
+                encryption_configured, encryption_detail = encryption_key_status()
+                if not encryption_configured:
+                    raise ValueError(
+                        f"{encryption_detail} Put the same host key in this machine's client.env, then restart client_app.py."
+                    )
                 payload = json.loads(body.decode("utf-8"))
                 server_url = str(payload.get("server_url", "")).strip().rstrip("/")
                 name = str(payload.get("name", "")).strip()

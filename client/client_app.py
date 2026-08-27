@@ -10,7 +10,11 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from local_env import load_env_file  # noqa: E402
 
-load_env_file(os.environ.get("FL_ENV_FILE", os.path.join(os.path.dirname(__file__), "..", ".env")))
+_repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+_default_env = os.path.join(_repo_root, ".env")
+if not os.path.exists(_default_env):
+    _default_env = os.path.join(_repo_root, "client.env")
+load_env_file(os.environ.get("FL_ENV_FILE", _default_env))
 
 import time  # noqa: E402
 import argparse  # noqa: E402
@@ -21,6 +25,7 @@ from train_loop import run_local_training, TrainConfig  # noqa: E402
 from data_loader import build_dataloaders_from_csv  # noqa: E402
 from schema_validator import validate_schema, format_validation_report  # noqa: E402
 from shared.model_schema import MODEL_CONFIG, SERVER_SCHEMA, DEFAULT_BATCH_SIZE  # noqa: E402
+from shared.encryption import require_encryption_key  # noqa: E402
 
 
 # ─── CLI ──────────────────────────────────────────────────────────────────────
@@ -44,6 +49,12 @@ def parse_args():
 
 def main():
     args = parse_args()
+
+    try:
+        require_encryption_key()
+    except ValueError as exc:
+        print(f"[!] Encryption setup incomplete: {exc}")
+        sys.exit(1)
 
     # Native clients can report real machine capacity.  The browser console
     # uses conservative estimates because browsers do not expose free RAM.

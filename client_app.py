@@ -18,7 +18,10 @@ if CLIENT_DIR not in sys.path:
 
 from local_env import load_env_file
 
-load_env_file(os.environ.get("FL_ENV_FILE", os.path.join(ROOT, ".env")))
+_default_env = os.path.join(ROOT, ".env")
+if not os.path.exists(_default_env):
+    _default_env = os.path.join(ROOT, "client.env")
+load_env_file(os.environ.get("FL_ENV_FILE", _default_env))
 
 from client.client_app import main
 
