@@ -10,6 +10,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 import time  # noqa: E402
 import argparse  # noqa: E402
+import webbrowser  # noqa: E402
+from pathlib import Path  # noqa: E402
 
 from api_client import APIClient, ServerUnreachableError, AuthError  # noqa: E402
 from supernet import Supernet, load_global_weights  # noqa: E402
@@ -24,10 +26,7 @@ from shared.model_schema import MODEL_CONFIG, SERVER_SCHEMA, DEFAULT_BATCH_SIZE 
 def parse_args():
     p = argparse.ArgumentParser(description="Federated Learning Client")
     p.add_argument("--server",    required=True, help="ngrok server URL, e.g. https://xxx.ngrok.io")
-    p.add_argument("--username",  required=True)
-    p.add_argument("--password",  required=True)
-    p.add_argument("--hospital",  required=True, help="Hospital display name")
-    p.add_argument("--email",     required=True, help="Contact email")
+    p.add_argument("--name",      required=True, help="Name shown to the host for approval")
     p.add_argument("--csv",       required=True, help="Path to local TCGA CSV file")
     p.add_argument("--proj",      required=True, help="Project ID to join/participate in")
     p.add_argument("--ram",       type=float, default=None, help="Override detected available RAM (GB)")
@@ -71,20 +70,14 @@ def main():
         print(f"[!] Cannot reach server: {e}")
         sys.exit(1)
 
-    # ── Auth ──────────────────────────────────────────────────────────────────
-    print("[*] Attempting login…")
+    # ── Passwordless participant session ─────────────────────────────────────
+    print(f"[*] Joining as {args.name}…")
     try:
-        result = client.login(args.username, args.password)
-        print(f"[+] Logged in as {args.username}")
-    except AuthError:
-        print("[*] Login failed — attempting registration…")
-        try:
-            client.register(args.username, args.password, args.hospital, args.email)
-            client.login(args.username, args.password)
-            print(f"[+] Registered and logged in as {args.username}")
-        except Exception as e:
-            print(f"[!] Auth failed: {e}")
-            sys.exit(1)
+        client.guest_login(args.name)
+        print(f"[+] Temporary participant session created for {args.name}")
+    except Exception as e:
+        print(f"[!] Could not create participant session: {e}")
+        sys.exit(1)
 
     # ── Schema Validation ─────────────────────────────────────────────────────
     print(f"[*] Validating CSV: {args.csv}")
@@ -223,4 +216,10 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    if len(sys.argv) == 1:
+        ui_path = Path(__file__).resolve().parent / "client.html"
+        webbrowser.open(ui_path.as_uri())
+        print(f"Client UI opened: {ui_path}")
+        print("Enter your name and the host's ngrok URL, then request access.")
+    else:
+        main()

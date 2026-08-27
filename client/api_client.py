@@ -125,6 +125,12 @@ class APIClient:
         self.token = result.get("access_token")
         return result
 
+    def guest_login(self, display_name: str) -> dict:
+        """POST /api/auth/guest — create a passwordless participant session."""
+        result = self._request("POST", "/api/auth/guest", json={"display_name": display_name})
+        self.token = result.get("access_token")
+        return result
+
     # ── Project endpoints ─────────────────────────────────────────────────────
 
     def list_projects(self) -> list:

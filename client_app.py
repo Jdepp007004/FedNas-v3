@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import os
 import sys
+import webbrowser
+from pathlib import Path
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 CLIENT_DIR = os.path.join(ROOT, "client")
@@ -20,8 +22,16 @@ from local_env import load_env_file
 
 load_env_file(os.environ.get("FL_ENV_FILE", os.path.join(ROOT, ".env")))
 
-from client_app import main
+from client.client_app import main
 
 
 if __name__ == "__main__":
-    main()
+    # With no arguments, open the simple client onboarding page.  Supplying
+    # arguments runs the real native worker for local training.
+    if len(sys.argv) == 1:
+        ui_path = Path(CLIENT_DIR) / "client.html"
+        webbrowser.open(ui_path.as_uri())
+        print(f"Client UI opened: {ui_path}")
+        print("Enter your name and the host's ngrok URL, then request access.")
+    else:
+        main()

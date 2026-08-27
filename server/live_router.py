@@ -34,9 +34,16 @@ async def client_live_state(proj_id: str, authorization: str | None = Header(Non
 async def project_stream(websocket: WebSocket, proj_id: str):
     token = websocket.query_params.get("token", "")
     try:
-        claims = verify_jwt(token)
-        is_host = claims.get("role") == "host"
-        viewer_id = claims.get("sub")
+        # The local host console has no login step.  Participant consoles use
+        # their temporary guest token so the stream can remain participant-
+        # scoped and show their own allocation.
+        if token:
+            claims = verify_jwt(token)
+            is_host = claims.get("role") == "host"
+            viewer_id = claims.get("sub")
+        else:
+            is_host = True
+            viewer_id = None
         build_project_snapshot(proj_id, viewer_id=viewer_id, host=is_host)
     except (ValueError, KeyError):
         await websocket.close(code=1008)

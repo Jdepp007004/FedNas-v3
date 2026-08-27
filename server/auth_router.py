@@ -46,6 +46,10 @@ class HostLoginRequest(BaseModel):
     password: str
 
 
+class GuestLoginRequest(BaseModel):
+    display_name: str
+
+
 # ─── Helpers ─────────────────────────────────────────────────────────────────
 
 def create_jwt(user_id: str, role: str | None = None) -> str:
@@ -167,4 +171,51 @@ async def login_host(payload: HostLoginRequest):
         "token_type": "bearer",
         "role": "host",
         "username": expected_username,
+    })
+
+
+@router.post("/guest")
+async def login_guest(payload: GuestLoginRequest):
+    """Create a passwordless participant identity for a trusted collaboration."""
+    display_name = payload.display_name.strip()
+    if not 1 <= len(display_name) <= 80:
+        return JSONResponse(status_code=422, content={"detail": "Name must be between 1 and 80 characters."})
+
+    db = read_db()
+    now = datetime.datetime.now(_tz.utc).isoformat() + "Z"
+    # Reuse the same guest identity when the native worker is started after
+    # the browser request.  This prevents the host from seeing two separate
+    # approvals for the same named participant.
+    user = next((item for item in db.setdefault("users", [])
+                 if item.get("anonymous") and item.get("username") == display_name), None)
+    if user is None:
+        user_id = str(uuid.uuid4())
+        # Keep the existing project/update pipeline compatible while ensuring
+        # no real password is ever requested or stored for guest participants.
+        guest_secret = bcrypt.hashpw(os.urandom(32), bcrypt.gensalt()).decode()
+        user = {
+            "user_id": user_id,
+            "username": display_name,
+            "password_hash": guest_secret,
+            "hospital_name": display_name,
+            "contact_email": "",
+            "approved_projects": [],
+            "pending_projects": [],
+            "anonymous": True,
+            "created_at": now,
+            "last_active": now,
+        }
+        db["users"].append(user)
+        status_code = 201
+    else:
+        user_id = user["user_id"]
+        user["last_active"] = now
+        status_code = 200
+    write_db(db)
+    token = create_jwt(user_id, role="participant")
+    return JSONResponse(status_code=status_code, content={
+        "access_token": token,
+        "token_type": "bearer",
+        "user_id": user_id,
+        "display_name": display_name,
     })

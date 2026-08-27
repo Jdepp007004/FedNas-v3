@@ -88,7 +88,8 @@ INFO:     Uvicorn running on http://0.0.0.0:8000
 
 | URL | Purpose |
 |-----|---------|
-| http://localhost:8000/dashboard | Server operator dashboard |
+| http://localhost:8000/host | Passwordless host control console |
+| http://localhost:8000/client | Client name/link connection page |
 | http://localhost:8000/docs | Interactive API docs (Swagger) |
 | http://localhost:8000/api/status | Health check (JSON) |
 
@@ -96,18 +97,18 @@ INFO:     Uvicorn running on http://0.0.0.0:8000
 
 ## 4. Get the Project ID
 
-After the server starts, the project ID is printed to the console. You can also get it via:
+The current workflow is passwordless. The host console does not require a
+login, and a client only enters a display name plus the host's ngrok link.
+The older account endpoints are retained only for compatibility with older
+clients.
+
+After the server starts, the project ID is printed to the console. It is also
+shown in the host console's project selector. For a script-based check, use:
 
 ```powershell
-# Login and get token
-$TOKEN = (Invoke-WebRequest -Uri "http://localhost:8000/api/auth/login" `
-  -Method POST `
-  -ContentType "application/json" `
-  -Body '{"username":"admin","password":"any"}').Content | ConvertFrom-Json | Select-Object -ExpandProperty access_token
-
-# List projects
-Invoke-WebRequest -Uri "http://localhost:8000/api/projects" `
-  -Headers @{ Authorization = "Bearer $TOKEN" } | Select-Object -ExpandProperty Content
+# Host project listing does not require a second host account.
+Invoke-WebRequest -Uri "http://localhost:8000/api/host/projects" |
+  Select-Object -ExpandProperty Content
 ```
 
 Or just read it from the server console output or `server/database.json`.
@@ -138,10 +139,7 @@ pip install -r client/requirements.txt
 ```powershell
 python client/client_app.py `
   --server   https://abc123.ngrok-free.app `
-  --username hospital_1 `
-  --password secret1 `
-  --hospital "Hospital 1" `
-  --email    admin1@hospital.org `
+  --name     "Client 1" `
   --csv      data/client_1.csv `
   --proj     193b8223-311e-4de4-809d-68d431da46ab
 ```
@@ -150,35 +148,28 @@ python client/client_app.py `
 ```powershell
 python client/client_app.py `
   --server   https://abc123.ngrok-free.app `
-  --username hospital_2 `
-  --password secret2 `
-  --hospital "Hospital 2" `
-  --email    admin2@hospital.org `
+  --name     "Client 2" `
   --csv      data/client_2.csv `
   --proj     193b8223-311e-4de4-809d-68d431da46ab
 ```
 
-> **Teammates 3 and 4:** Same pattern, change `hospital_3/4`, `secret3/4`, `client_3/4.csv`.
+> **Teammates 3 and 4:** Same pattern, change the displayed name and CSV split.
 
 ### Option B — Browser UI (no Python knowledge needed)
 
-1. Open `https://YOUR_NGROK_URL/client` or `client/client.html` in any browser
-2. **Step 1** — Paste the ngrok URL → click **Connect**
-3. **Step 2** — Enter username / password → click **Register** (first time) then **Login**
-4. **Step 3** — Drag & drop their `client_X.csv` file
-5. **Step 4** — Select the project → click **Request to Join**
-6. Wait for admin approval (see Section 7)
-7. Run the native `python client_app.py ...` command shown on the client page. The browser page is the live control plane; the Python worker performs the real local training.
+1. Run `python client_app.py` to open the client page, or open
+   `https://YOUR_NGROK_URL/client` in any browser.
+2. Enter a display name and the ngrok URL, then click **Connect and request access**.
+3. Select the project and local `client_X.csv` split, then save the resource allocation.
+4. Wait for the host to approve that name in the host console.
+5. Run the native `python client_app.py ...` command shown on the client page. The browser page is the live control plane; the Python worker performs the real local training.
 
 **All CLI flags:**
 
 | Flag | Required | Description |
 |------|----------|-------------|
 | `--server` | ✅ | ngrok HTTPS URL |
-| `--username` | ✅ | Unique username (auto-registers on first run) |
-| `--password` | ✅ | Password |
-| `--hospital` | ✅ | Hospital display name |
-| `--email` | ✅ | Contact email |
+| `--name` | ✅ | Name shown to the host for approval |
 | `--csv` | ✅ | Path to their client CSV file |
 | `--proj` | ✅ | Project UUID |
 | `--ram` | ❌ | RAM in GB (for NAS depth, default 8) |
@@ -190,12 +181,12 @@ python client/client_app.py `
 
 ## 7. Approve Clients (Server Admin)
 
-1. Open **http://localhost:8000/dashboard**
+1. Open **http://localhost:8000/host**
 2. Under the **Projects** table, **Pending Approval** column shows yellow badges
 3. Click the badge to approve that client
 4. Client automatically moves to **Connected** and training begins
 
-> The dashboard auto-refreshes every 15 seconds.
+> The host page auto-refreshes through its live stream. Anyone who has the ngrok link can reach host controls, so share it only with trusted collaborators.
 
 ---
 

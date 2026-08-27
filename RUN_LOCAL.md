@@ -35,19 +35,17 @@ pip install -r client/requirements.txt
 
 The repository now has a local `.env` file for this workspace. It is ignored by
 Git and is loaded automatically by `host_app.py` and `client_app.py`. For a
-fresh clone, create `.env` from `.env.example` and fill in the same values.
-Replace the development secrets before using this beyond a trusted test:
+fresh clone, create `.env` from `.env.example` and fill in the values below.
+The host/client pages no longer ask anyone for an account or password:
 
 ```powershell
 $env:JWT_SECRET = "replace-with-a-long-secret"
-$env:HOST_USERNAME = "host"
-$env:HOST_PASSWORD = "replace-with-a-host-password"
 $env:FL_ENCRYPTION_KEY = (python -c "from shared.encryption import generate_key_b64; print(generate_key_b64())")
 $env:NGROK_AUTH_TOKEN = "your-ngrok-auth-token"
 ```
 
-`NGROK_AUTH_TOKEN` may be left unset for local-only testing. The configured host
-login for this workspace is `host` / `FedNasHost_2026!`.
+`NGROK_AUTH_TOKEN` may be left unset for local-only testing. Keep the ngrok URL
+private to the friends who should be able to see the host controls.
 
 ## Start the host
 
@@ -66,19 +64,19 @@ https://YOUR_NGROK_URL/client
 ```
 
 Friends can also open `client/client.html` locally and enter the same URL.
-
-The default development host login is `host` / `hostpass` unless you set
-`HOST_USERNAME` and `HOST_PASSWORD`.
+The host page opens directly—there is no host sign-in step.
 
 ## Client workflow
 
-1. Enter the host's ngrok URL and connect.
-2. Register and log in.
+1. Run `python client_app.py` to open the client page, or open
+   `https://YOUR_NGROK_URL/client`.
+2. Enter a name (for example `Client 1`) and the host's ngrok URL, then click
+   **Connect and request access**.
 3. Choose the project.
 4. Select the assigned `split_data/client_N.csv`. The browser reads it locally
    and sends metadata only.
-5. Set available and dedicated RAM/CPU, then request access.
-6. The host approves the request in `/host`.
+5. Set available and dedicated RAM/CPU, then request access if needed.
+6. The host approves the request by the displayed name in `/host`.
 7. Run the native trainer command shown by the client page.
 
 Example for a teammate:
@@ -86,10 +84,7 @@ Example for a teammate:
 ```powershell
 python client_app.py `
   --server https://YOUR_NGROK_URL `
-  --username friend_1 `
-  --password choose-a-password `
-  --hospital "Friend 1 laptop" `
-  --email friend1@example.com `
+  --name "Client 1" `
   --csv split_data\client_2.csv `
   --proj PROJECT_ID `
   --dedicated-ram 4 `
@@ -119,10 +114,7 @@ terminal after approving the host participant:
 ```powershell
 python client_app.py `
   --server http://localhost:8000 `
-  --username host_client `
-  --password choose-a-password `
-  --hospital "Host machine" `
-  --email host@local `
+  --name "Host" `
   --csv split_data\client_1.csv `
   --proj PROJECT_ID `
   --dedicated-ram 4 `
