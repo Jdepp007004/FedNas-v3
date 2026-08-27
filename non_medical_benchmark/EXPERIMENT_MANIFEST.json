@@ -1,0 +1,37 @@
+{
+  "method": "CC-EFL",
+  "claim_type": "systems integration and empirical trade-off",
+  "seeds": [1, 2, 3, 4, 5],
+  "confidence_interval": "two-sided 95% Student-t over independent seeds",
+  "comparison": [
+    "fedavg",
+    "fedprox",
+    "heterofl",
+    "fjord",
+    "fedrolex",
+    "maxnet",
+    "scaffold",
+    "cc_efl"
+  ],
+  "partition": {
+    "type": "Dirichlet label skew",
+    "alpha": "dataset-specific DatasetSpec.dirichlet_alpha",
+    "seeded": true
+  },
+  "selection": "validation metric only; smallest FLOP tier within 0.2 percentage points of validation best",
+  "test_set": "held out and evaluated only after selection",
+  "resource_metrics": [
+    "trainable parameters",
+    "approximate multiply-add FLOPs",
+    "payload bytes",
+    "download bytes",
+    "active tier",
+    "participation rate"
+  ],
+  "security": {
+    "secure_aggregation": "pairwise X25519 mask cancellation harness; no dropout recovery",
+    "differential_privacy": "client-level update clipping plus Gaussian noise; conservative sequential epsilon",
+    "robustness": ["sign_flip", "label_flip", "backdoor", "trimmed_mean", "flame"]
+  },
+  "reproduction_note": "Do not report capped CIFAR pilot accuracy as a final claim; use the larger CIFAR command in README for the paper run."
+}

@@ -162,13 +162,13 @@ python client/client_app.py `
 
 ### Option B — Browser UI (no Python knowledge needed)
 
-1. Open `client/client_ui.html` in any browser (just double-click the file)
+1. Open `https://YOUR_NGROK_URL/client` or `client/client.html` in any browser
 2. **Step 1** — Paste the ngrok URL → click **Connect**
 3. **Step 2** — Enter username / password → click **Register** (first time) then **Login**
 4. **Step 3** — Drag & drop their `client_X.csv` file
 5. **Step 4** — Select the project → click **Request to Join**
 6. Wait for admin approval (see Section 7)
-7. Click **Start Training**
+7. Run the native `python client_app.py ...` command shown on the client page. The browser page is the live control plane; the Python worker performs the real local training.
 
 **All CLI flags:**
 

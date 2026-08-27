@@ -1,0 +1,10 @@
+# Reproducibility lock for the isolated research benchmark.
+# Python runtime: 3.13.7. The CPU wheels are selected by the PyTorch index
+# command documented in README.md.
+numpy==2.2.6
+pandas==2.3.3
+scikit-learn==1.7.2
+torch==2.9.0
+torchvision==0.24.0
+cryptography==46.0.3
+pytest==8.4.2

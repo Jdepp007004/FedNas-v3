@@ -25,10 +25,15 @@ env/
 
 # Data — too large / sensitive for git
 data/
+node_modules/
+*.tar.gz
+non_medical_benchmark/demo_site/
 server/models/
 
 # Database (auto-recreated on server start)
+server/database.json
 server/database.json.tmp
+server/uploads/
 
 # Coverage
 .coverage
@@ -37,6 +42,9 @@ htmlcov/
 
 # pytest cache
 .pytest_cache/
+.pytest-tmp/
+.pytest-security-check/
+.pytest-cifar-check/
 
 # macOS
 .DS_Store

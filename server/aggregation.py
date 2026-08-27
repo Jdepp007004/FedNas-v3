@@ -102,6 +102,69 @@ def aggregate_fedavg(
     return aggregated
 
 
+def aggregate_partial_fedavg(
+    current_global: dict,
+    client_updates: list,
+    sample_counts: list,
+) -> dict:
+    """FedAvg for nested/elastic subnet updates.
+
+    ``aggregate_fedavg`` intentionally preserves its original contract.  This
+    companion function is for a future width-aware production payload: each
+    client may send a prefix-shaped tensor, and untouched coordinates retain
+    the previous global value.  Each coordinate is normalized only by clients
+    that actually contributed that coordinate.
+    """
+    if not client_updates:
+        raise EmptyRoundError("No client updates to aggregate.")
+    if len(client_updates) != len(sample_counts):
+        raise ValueError("client_updates and sample_counts must have the same length.")
+    if any(int(count) < 0 for count in sample_counts):
+        raise ValueError("sample_counts must be non-negative.")
+    if sum(sample_counts) <= 0:
+        raise EmptyRoundError("All clients report 0 samples.")
+
+    aggregated = {}
+    for key, base_value in current_global.items():
+        base = np.asarray(base_value)
+        numerator = np.zeros_like(base, dtype=np.float64)
+        denominator = np.zeros_like(base, dtype=np.float64)
+        for update, count in zip(client_updates, sample_counts):
+            if key not in update:
+                continue
+            value = np.asarray(update[key])
+            if value.ndim != base.ndim:
+                continue
+            if value.ndim == 0:
+                slices = ()
+            elif any(size > limit for size, limit in zip(value.shape, base.shape)):
+                continue
+            else:
+                slices = tuple(slice(0, size) for size in value.shape)
+            weight = float(count)
+            numerator[slices] += value.astype(np.float64) * weight
+            denominator[slices] += weight
+        merged = base.astype(np.float64, copy=True)
+        mask = denominator > 0
+        merged[mask] = numerator[mask] / denominator[mask]
+        aggregated[key] = merged.astype(base.dtype, copy=False)
+
+    # Keep the old behavior for entirely new keys, which is useful during a
+    # schema migration but does not affect the existing depth-only route.
+    for key in set().union(*(update.keys() for update in client_updates)) - set(current_global):
+        contributors = [
+            (float(count), np.asarray(update[key], dtype=np.float32))
+            for update, count in zip(client_updates, sample_counts)
+            if key in update and count > 0
+        ]
+        if not contributors:
+            continue
+        total = sum(weight for weight, _ in contributors)
+        aggregated[key] = sum(weight * value for weight, value in contributors) / total
+
+    return aggregated
+
+
 
 # ─── Momentum Smoothing ───────────────────────────────────────────────────────
 

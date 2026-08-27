@@ -7,6 +7,7 @@ Owner: Sunishka Sarkar
 import os
 import sys
 import threading
+import datetime as dt
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
@@ -19,8 +20,9 @@ from pydantic import BaseModel  # noqa: E402
 from db_handler import read_db, write_db, get_project, update_project, append_round_history  # noqa: E402
 from auth_router import verify_jwt  # noqa: E402
 from aggregation import aggregate_fedavg, update_with_momentum, validate_global_model, EmptyRoundError  # noqa: E402
-from nas_controller import recommend_subnet_depth, evaluate_architecture_candidates  # noqa: E402
+from nas_controller import evaluate_architecture_candidates  # noqa: E402
 from shared.model_schema import MODEL_CONFIG, SERVER_SCHEMA  # noqa: E402
+from resource_planner import depth_for_profile, normalise_hardware_profile, build_round_plan  # noqa: E402
 
 # ── Phase 2 infrastructure (graceful degradation when not configured) ─────────
 try:
@@ -117,6 +119,18 @@ class UpdateRequest(BaseModel):
     metrics:      dict
 
 
+class ResourceUpdateRequest(BaseModel):
+    hardware_profile: dict
+
+
+class DatasetMetaRequest(BaseModel):
+    filename: str
+    rows: int = 0
+    columns: int = 0
+    size_bytes: int = 0
+    sha256: str | None = None
+
+
 # ─── Endpoints ────────────────────────────────────────────────────────────────
 
 @router.get("")
@@ -137,6 +151,19 @@ async def list_projects(current_user: dict = Depends(_get_current_user)):  # noq
     return JSONResponse(status_code=200, content=visible)
 
 
+@router.get("/{proj_id}")
+async def get_project_details(proj_id: str, current_user: dict = Depends(_get_current_user)):  # noqa: B008
+    """GET /api/projects/{proj_id} — project details for a logged-in client."""
+    proj = get_project(proj_id)
+    if proj is None:
+        raise _http_error(404, f"Project {proj_id} not found.")
+    entry = {k: proj[k] for k in proj if k not in {"global_model_path", "client_profiles"}}
+    user_id = current_user["sub"]
+    entry["i_am_connected"] = user_id in proj.get("connected_clients", [])
+    entry["i_am_pending"] = user_id in proj.get("pending_clients", [])
+    return JSONResponse(status_code=200, content=entry)
+
+
 @router.post("/{proj_id}/join")
 async def join_project(
     proj_id: str,
@@ -151,14 +178,22 @@ async def join_project(
         raise _http_error(403, "Project is not accepting new clients.")
 
     user_id = current_user["sub"]
-    recommended_depth = recommend_subnet_depth(user_id, payload.hardware_profile)
+    hardware_profile = normalise_hardware_profile(payload.hardware_profile)
+    recommended_depth = depth_for_profile(hardware_profile, MODEL_CONFIG["max_depth"])
 
     # Add to pending_clients if not already there or in connected
     pending = proj.get("pending_clients", [])
     connected = proj.get("connected_clients", [])
+    profile_map = proj.get("client_profiles", {}) or {}
+    previous = profile_map.get(user_id, {}) or {}
+    profile_map[user_id] = {
+        **previous,
+        "hardware_profile": hardware_profile,
+        "last_seen": dt.datetime.now(dt.timezone.utc).isoformat(),
+    }
     if user_id not in pending and user_id not in connected:
         pending.append(user_id)
-        update_project(proj_id, {"pending_clients": pending})
+    update_project(proj_id, {"pending_clients": pending, "client_profiles": profile_map})
 
     return JSONResponse(status_code=200, content={
         "status":           "pending_approval",
@@ -191,16 +226,92 @@ async def get_global_model(
         # Return empty weights dict for the first round
         weights_json = {}
 
-    # Per-client depth assignment
-    # Find user profile to check if they have specific settings or hardware info
-    # _user = next((u for u in db["users"] if u["user_id"] == user_id), {})
-    active_depth = proj.get("recommended_depth", MODEL_CONFIG["max_depth"])
+    # Per-client depth assignment.  The same explainable plan is returned to
+    # the browser console, while this endpoint returns only this client's
+    # assigned depth.
+    db = read_db()
+    profiles = proj.get("client_profiles", {}) or {}
+    own_profile = profiles.get(user_id, {}).get("hardware_profile", {})
+    active_depth = depth_for_profile(own_profile, MODEL_CONFIG["max_depth"])
+    users = {item.get("user_id"): item for item in db.get("users", [])}
+    round_plan = build_round_plan(proj, users)
 
     return JSONResponse(status_code=200, content={
         "round":        proj.get("current_round", 0),
         "active_depth": active_depth,
         "weights":      weights_json,
+        "round_plan":   round_plan,
     })
+
+
+@router.post("/{proj_id}/resources")
+async def update_resources(
+    proj_id: str,
+    payload: ResourceUpdateRequest,
+    current_user: dict = Depends(_get_current_user),  # noqa: B008
+):
+    """Update observed capacity and the client's explicit contribution cap."""
+    proj = get_project(proj_id)
+    if proj is None:
+        raise _http_error(404, f"Project {proj_id} not found.")
+    user_id = current_user["sub"]
+    if user_id not in proj.get("pending_clients", []) and user_id not in proj.get("connected_clients", []):
+        raise _http_error(403, "Request access to the project before setting resources.")
+    profiles = proj.get("client_profiles", {}) or {}
+    previous = profiles.get(user_id, {}) or {}
+    profiles[user_id] = {
+        **previous,
+        "hardware_profile": normalise_hardware_profile(payload.hardware_profile),
+        "last_seen": dt.datetime.now(dt.timezone.utc).isoformat(),
+    }
+    update_project(proj_id, {"client_profiles": profiles})
+    return JSONResponse(status_code=200, content={
+        "status": "updated",
+        "hardware_profile": profiles[user_id]["hardware_profile"],
+    })
+
+
+@router.post("/{proj_id}/dataset-meta")
+async def save_dataset_meta(
+    proj_id: str,
+    payload: DatasetMetaRequest,
+    current_user: dict = Depends(_get_current_user),  # noqa: B008
+):
+    """Record local dataset metadata without transferring CSV rows."""
+    proj = get_project(proj_id)
+    if proj is None:
+        raise _http_error(404, f"Project {proj_id} not found.")
+    user_id = current_user["sub"]
+    if user_id not in proj.get("pending_clients", []) and user_id not in proj.get("connected_clients", []):
+        raise _http_error(403, "Request access to the project before attaching a dataset.")
+    profiles = proj.get("client_profiles", {}) or {}
+    record = profiles.get(user_id, {}) or {}
+    record["dataset_meta"] = {
+        "filename": os.path.basename(payload.filename),
+        "rows": max(0, payload.rows),
+        "columns": max(0, payload.columns),
+        "size_bytes": max(0, payload.size_bytes),
+        "sha256": payload.sha256,
+        "local_only": True,
+        "updated_at": dt.datetime.now(dt.timezone.utc).isoformat(),
+    }
+    record["last_seen"] = dt.datetime.now(dt.timezone.utc).isoformat()
+    profiles[user_id] = record
+    update_project(proj_id, {"client_profiles": profiles})
+    return JSONResponse(status_code=200, content={"status": "metadata_saved", "dataset_meta": record["dataset_meta"]})
+
+
+@router.post("/{proj_id}/heartbeat")
+async def heartbeat(proj_id: str, current_user: dict = Depends(_get_current_user)):  # noqa: B008
+    proj = get_project(proj_id)
+    if proj is None:
+        raise _http_error(404, f"Project {proj_id} not found.")
+    user_id = current_user["sub"]
+    profiles = proj.get("client_profiles", {}) or {}
+    if user_id in profiles:
+        profiles[user_id]["last_seen"] = dt.datetime.now(dt.timezone.utc).isoformat()
+        update_project(proj_id, {"client_profiles": profiles})
+    return JSONResponse(status_code=200, content={"status": "ok"})
 
 
 @router.post("/{proj_id}/update")
@@ -249,6 +360,12 @@ async def post_model_update(
     expected = len(proj.get("connected_clients", []))
     min_clients = proj.get("min_clients_per_round", 1)
     trigger = submitted >= min(expected, min_clients)
+    update_project(proj_id, {"round_progress": {
+        "round": current_round,
+        "submitted": submitted,
+        "expected": expected,
+        "last_update_at": dt.datetime.now(dt.timezone.utc).isoformat(),
+    }})
 
     if trigger:
         db_snapshot = read_db()
@@ -297,17 +414,26 @@ async def approve_client(
     if proj is None:
         raise _http_error(404, f"Project {proj_id} not found.")
 
-    pending   = proj.get("pending_clients", [])
+    try:
+        return JSONResponse(status_code=200, content=approve_project_client(proj_id, user_id_to_approve))
+    except ValueError as exc:
+        raise _http_error(400, str(exc)) from exc
+
+
+def approve_project_client(proj_id: str, user_id_to_approve: str) -> dict:
+    """Approve a pending participant; shared by legacy and host endpoints."""
+    proj = get_project(proj_id)
+    if proj is None:
+        raise KeyError(f"Project {proj_id} not found.")
+    pending = proj.get("pending_clients", [])
     connected = proj.get("connected_clients", [])
-
     if user_id_to_approve not in pending:
-        raise _http_error(400, "User is not in pending_clients list.")
-
+        raise ValueError("User is not in pending_clients list.")
     pending.remove(user_id_to_approve)
-    connected.append(user_id_to_approve)
+    if user_id_to_approve not in connected:
+        connected.append(user_id_to_approve)
     update_project(proj_id, {"pending_clients": pending, "connected_clients": connected})
 
-    # Also update user's approved_projects list
     db = read_db()
     for user in db["users"]:
         if user["user_id"] == user_id_to_approve:
@@ -316,8 +442,7 @@ async def approve_client(
             if proj_id in user.get("pending_projects", []):
                 user["pending_projects"].remove(proj_id)
     write_db(db)
-
-    return JSONResponse(status_code=200, content={"status": "approved", "user_id": user_id_to_approve})
+    return {"status": "approved", "user_id": user_id_to_approve}
 
 
 # ─── Background: Round Lifecycle ─────────────────────────────────────────────
@@ -381,12 +506,20 @@ def round_lifecycle(proj_id: str, updates_buffer: list, db_snapshot: dict) -> No
             "current_round":     new_round,
             "global_model_path": pt_path,
             "recommended_depth": recommended_depth,
+            "round_progress": {
+                "round": new_round,
+                "submitted": 0,
+                "expected": len(proj.get("connected_clients", [])),
+                "completed_at": dt.datetime.now(dt.timezone.utc).isoformat(),
+            },
         })
 
         # Append round history
         record = {
             "proj_id": proj_id,
             "round":   new_round,
+            "participants": [u.get("user_id") for u in updates_buffer],
+            "depths": {str(u.get("user_id")): int(u.get("active_depth", MODEL_CONFIG["max_depth"])) for u in updates_buffer},
             **metrics,
         }
         append_round_history(record)

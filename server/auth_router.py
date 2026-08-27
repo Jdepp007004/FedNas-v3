@@ -7,6 +7,7 @@ Owner: Sunishka Sarkar
 
 import uuid
 import datetime
+import hmac
 from datetime import timezone as _tz
 
 import bcrypt
@@ -40,11 +41,18 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class HostLoginRequest(BaseModel):
+    username: str
+    password: str
+
+
 # ─── Helpers ─────────────────────────────────────────────────────────────────
 
-def create_jwt(user_id: str) -> str:
+def create_jwt(user_id: str, role: str | None = None) -> str:
     exp = datetime.datetime.now(_tz.utc) + datetime.timedelta(hours=JWT_EXP_HOURS)
     payload = {"sub": user_id, "exp": exp}
+    if role:
+        payload["role"] = role
     return pyjwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGO)
 
 
@@ -57,6 +65,14 @@ def verify_jwt(token: str) -> dict:
         raise ValueError("Token has expired.")
     except pyjwt.InvalidTokenError as e:
         raise ValueError(f"Invalid token: {e}")
+
+
+def verify_host_jwt(token: str) -> dict:
+    """Decode a host token and reject ordinary participant tokens."""
+    payload = verify_jwt(token)
+    if payload.get("role") != "host":
+        raise ValueError("This token is not a host token.")
+    return payload
 
 
 # ─── Endpoints ────────────────────────────────────────────────────────────────
@@ -127,3 +143,28 @@ async def login_user(payload: LoginRequest):
             "user_id":           user["user_id"],
         },
     )
+
+
+@router.post("/host-login")
+async def login_host(payload: HostLoginRequest):
+    """Issue a host token using credentials held in environment variables."""
+    expected_username = os.environ.get("HOST_USERNAME", "host")
+    expected_password = os.environ.get("HOST_PASSWORD", "hostpass")
+    configured_hash = os.environ.get("HOST_PASSWORD_HASH", "")
+    if configured_hash:
+        try:
+            valid_password = bcrypt.checkpw(payload.password.encode(), configured_hash.encode())
+        except ValueError:
+            valid_password = False
+    else:
+        valid_password = hmac.compare_digest(payload.password, expected_password)
+    if payload.username != expected_username or not valid_password:
+        return JSONResponse(status_code=401, content={"detail": "Invalid host credentials."})
+
+    token = create_jwt("host", role="host")
+    return JSONResponse(status_code=200, content={
+        "access_token": token,
+        "token_type": "bearer",
+        "role": "host",
+        "username": expected_username,
+    })

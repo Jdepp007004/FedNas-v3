@@ -139,6 +139,22 @@ class APIClient:
             json={"hardware_profile": hardware_profile},
         )
 
+    def update_resources(self, proj_id: str, hardware_profile: dict) -> dict:
+        """POST /api/projects/{proj_id}/resources"""
+        return self._request(
+            "POST",
+            f"/api/projects/{proj_id}/resources",
+            json={"hardware_profile": hardware_profile},
+        )
+
+    def save_dataset_meta(self, proj_id: str, metadata: dict) -> dict:
+        """POST local dataset metadata; the CSV itself stays on this machine."""
+        return self._request("POST", f"/api/projects/{proj_id}/dataset-meta", json=metadata)
+
+    def heartbeat(self, proj_id: str) -> dict:
+        """POST /api/projects/{proj_id}/heartbeat"""
+        return self._request("POST", f"/api/projects/{proj_id}/heartbeat")
+
     def fetch_global_model(self, proj_id: str) -> dict:
         """
         GET /api/projects/{proj_id}/model

@@ -21,6 +21,11 @@
 
 FL Platform enables hospitals to collaboratively train a shared neural network on TCGA clinical data **without sharing raw patient records**. Each hospital trains locally on its own silo, then sends only encrypted model weight updates to a central coordinator.
 
+For the runnable host/client workflow, including the new live host console,
+client resource controls, ngrok setup, and four ready-to-share partitions, see
+[`RUN_LOCAL.md`](RUN_LOCAL.md). Start the host with `python host_app.py` and use
+`/host`; participants can use `/client` or `client/client.html`.
+
 ### Key Features
 
 | Feature | Description |
@@ -208,7 +213,7 @@ python client/client_app.py `
 
 ### Client — Browser UI
 
-1. Open `client/client_ui.html` in any browser
+1. Open `https://YOUR_NGROK_URL/client` or `client/client.html` in any browser
 2. Follow the 4-step Material Design wizard:
    - Connect → Auth → Upload CSV → Join Project
 3. Wait for server admin to approve → click **Start Training**

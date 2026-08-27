@@ -1,0 +1,26 @@
+{
+  "source": "data\\full_dataset.csv",
+  "parts": 4,
+  "seed": 42,
+  "rows": 4116,
+  "columns": 67,
+  "files": [
+    {
+      "name": "client_1.csv",
+      "rows": 1031
+    },
+    {
+      "name": "client_2.csv",
+      "rows": 1029
+    },
+    {
+      "name": "client_3.csv",
+      "rows": 1029
+    },
+    {
+      "name": "client_4.csv",
+      "rows": 1027
+    }
+  ],
+  "privacy_note": "Client CSV files are intended to remain on their owner's machine; only model updates and metadata are sent."
+}

@@ -6,7 +6,10 @@ Shared pytest fixtures for the FL Platform test suite.
 import os
 import sys
 import json
+import shutil
 import tempfile  # noqa: F401
+import uuid
+from pathlib import Path
 import numpy as np
 import pandas as pd
 import pytest
@@ -21,6 +24,40 @@ for sub in [ROOT, os.path.join(ROOT, "server"), os.path.join(ROOT, "client")]:
 import base64  # noqa: E402
 os.environ["FL_ENCRYPTION_KEY"] = base64.b64encode(b"test_key_32bytes_padding_000000!").decode()
 os.environ["JWT_SECRET"] = "test_jwt_secret"
+
+
+class _WorkspaceTmpPathFactory:
+    """Minimal tmp_path_factory replacement for the managed OneDrive runner.
+
+    The built-in pytest factory attempts to clean a basetemp directory whose
+    ACL is protected by the synchronized workspace.  Keeping this test-only
+    factory under the repository makes fixtures deterministic without
+    changing application code or the production data paths.
+    """
+
+    def __init__(self, root: Path):
+        self.root = root
+        self._counter = 0
+
+    def mktemp(self, prefix: str) -> Path:
+        self._counter += 1
+        path = self.root / f"{prefix}{self._counter}"
+        path.mkdir(parents=True, exist_ok=False)
+        return path
+
+
+@pytest.fixture(scope="session")
+def tmp_path_factory():
+    root = Path(ROOT) / f".pytest-work-{uuid.uuid4().hex[:10]}"
+    root.mkdir(parents=True, exist_ok=False)
+    factory = _WorkspaceTmpPathFactory(root)
+    yield factory
+    shutil.rmtree(root, ignore_errors=True)
+
+
+@pytest.fixture()
+def tmp_path(tmp_path_factory):
+    return tmp_path_factory.mktemp("tmp")
 
 
 # ─── Synthetic TCGA CSV ───────────────────────────────────────────────────────

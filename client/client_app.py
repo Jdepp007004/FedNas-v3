@@ -30,8 +30,10 @@ def parse_args():
     p.add_argument("--email",     required=True, help="Contact email")
     p.add_argument("--csv",       required=True, help="Path to local TCGA CSV file")
     p.add_argument("--proj",      required=True, help="Project ID to join/participate in")
-    p.add_argument("--ram",       type=float, default=8.0)
-    p.add_argument("--cores",     type=int,   default=4)
+    p.add_argument("--ram",       type=float, default=None, help="Override detected available RAM (GB)")
+    p.add_argument("--cores",     type=int,   default=None, help="Override detected CPU cores")
+    p.add_argument("--dedicated-ram", type=float, default=None, help="RAM cap to contribute (GB)")
+    p.add_argument("--dedicated-cores", type=int, default=None, help="CPU core cap to contribute")
     p.add_argument("--gpu",       action="store_true")
     p.add_argument("--no-ui",     action="store_true", help="Disable matplotlib dashboard")
     return p.parse_args()
@@ -41,6 +43,22 @@ def parse_args():
 
 def main():
     args = parse_args()
+
+    # Native clients can report real machine capacity.  The browser console
+    # uses conservative estimates because browsers do not expose free RAM.
+    import hashlib
+    try:
+        import psutil
+        detected_ram = round(psutil.virtual_memory().available / (1024 ** 3), 2)
+        detected_cores = psutil.cpu_count(logical=True) or 2
+    except Exception:
+        detected_ram = 8.0
+        detected_cores = 4
+    available_ram = max(0.5, float(args.ram or detected_ram))
+    available_cores = max(1, int(args.cores or detected_cores))
+    dedicated_ram = min(available_ram, float(args.dedicated_ram or max(0.5, available_ram * 0.5)))
+    dedicated_cores = min(available_cores, int(args.dedicated_cores or max(1, (available_cores + 1) // 2)))
+    gpu_available = bool(args.gpu)
 
     client = APIClient(args.server)
 
@@ -71,7 +89,7 @@ def main():
     # ── Schema Validation ─────────────────────────────────────────────────────
     print(f"[*] Validating CSV: {args.csv}")
     import pandas as pd
-    df_check = pd.read_csv(args.csv, low_memory=False, nrows=500)
+    df_check = pd.read_csv(args.csv, low_memory=False)
     val_result = validate_schema(df_check, SERVER_SCHEMA)
     print(format_validation_report(val_result))
     if not val_result.passed:
@@ -80,10 +98,13 @@ def main():
 
     # ── Join Project ──────────────────────────────────────────────────────────
     hw_profile = {
-        "ram_gb": args.ram,
-        "cpu_cores": args.cores,
-        "gpu_available": args.gpu,
+        "available_ram_gb": available_ram,
+        "available_cpu_cores": available_cores,
+        "dedicated_ram_gb": dedicated_ram,
+        "dedicated_cpu_cores": dedicated_cores,
+        "gpu_available": gpu_available,
         "local_data_size": df_check.shape[0],
+        "resource_source": "native psutil",
     }
     print(f"[*] Joining project: {args.proj}")
     try:
@@ -92,6 +113,16 @@ def main():
         schema = join_resp.get("required_schema", SERVER_SCHEMA)
         print(f"[+] Join request submitted. Recommended depth: {active_depth}")
         print(f"[*] Status: {join_resp.get('status', '?')} — waiting for admin approval…")
+        client.update_resources(args.proj, hw_profile)
+        with open(args.csv, "rb") as dataset_handle:
+            dataset_digest = hashlib.sha256(dataset_handle.read()).hexdigest()
+        client.save_dataset_meta(args.proj, {
+            "filename": os.path.basename(args.csv),
+            "rows": int(df_check.shape[0]),
+            "columns": int(df_check.shape[1]),
+            "size_bytes": os.path.getsize(args.csv),
+            "sha256": dataset_digest,
+        })
     except Exception as e:
         print(f"[!] Join failed: {e}")
         sys.exit(1)
@@ -133,6 +164,10 @@ def main():
     # ── Federated training loop ───────────────────────────────────────────────
     round_history = []
     while True:
+        try:
+            client.heartbeat(args.proj)
+        except Exception:
+            pass
         # R1: Fetch global model
         print("[*] Fetching global model…")
         model_data = client.fetch_global_model(args.proj)

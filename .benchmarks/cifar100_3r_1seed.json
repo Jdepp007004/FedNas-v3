@@ -1,0 +1,1224 @@
+{
+  "dataset": "cifar100",
+  "train_samples": 900,
+  "validation_samples": 100,
+  "test_samples": 500,
+  "rounds": 3,
+  "seeds": [
+    1
+  ],
+  "summary": [
+    {
+      "variant": "elastic_cnn",
+      "strategy": "elastic",
+      "seeds": 1,
+      "test_accuracy_mean": 0.018,
+      "test_accuracy_std": 0.0,
+      "val_accuracy_mean": 0.03,
+      "upload_bytes_per_round_mean": 1019712.0,
+      "download_bytes_per_round_mean": 1019712.0,
+      "active_flops_per_client_mean": 63783520.0,
+      "client_parameters_mean": 63732.0,
+      "upload_reduction_vs_fedavg": 0.4670702746094926,
+      "flops_reduction_vs_fedavg": 0.45389864370224575,
+      "parameter_reduction_vs_fedavg": 0.4670702746094926
+    },
+    {
+      "variant": "elastic_cnn",
+      "strategy": "fedavg",
+      "seeds": 1,
+      "test_accuracy_mean": 0.012,
+      "test_accuracy_std": 0.0,
+      "val_accuracy_mean": 0.03,
+      "upload_bytes_per_round_mean": 1913408.0,
+      "download_bytes_per_round_mean": 1913408.0,
+      "active_flops_per_client_mean": 116797952.0,
+      "client_parameters_mean": 119588.0,
+      "upload_reduction_vs_fedavg": 0.0,
+      "flops_reduction_vs_fedavg": 0.0,
+      "parameter_reduction_vs_fedavg": 0.0
+    }
+  ],
+  "results": [
+    {
+      "dataset": "cifar100",
+      "variant": "elastic_cnn",
+      "num_classes": 100,
+      "clients": 4,
+      "rounds": 3,
+      "strategy": "fedavg",
+      "history": [
+        {
+          "round": 1,
+          "strategy": "fedavg",
+          "mean_client_loss": 4.5593421459198,
+          "participating_clients": 4,
+          "participation_rate": 1.0,
+          "total_upload_bytes": 1913408,
+          "total_download_bytes": 1913408,
+          "mean_active_flops": 116797952.0,
+          "mean_client_parameters": 119588.0,
+          "selected_depth": 1,
+          "selected_width": 16,
+          "selected_val_accuracy": 0.02,
+          "selected_test_accuracy": 0.002,
+          "candidate_scores": [
+            {
+              "depth": 1,
+              "width": 16,
+              "parameters": 2180,
+              "flops": 887936,
+              "val_accuracy": 0.02,
+              "test_accuracy": null
+            },
+            {
+              "depth": 1,
+              "width": 32,
+              "parameters": 4260,
+              "flops": 1775872,
+              "val_accuracy": 0.01,
+              "test_accuracy": null
+            },
+            {
+              "depth": 1,
+              "width": 48,
+              "parameters": 6340,
+              "flops": 2663808,
+              "val_accuracy": 0.01,
+              "test_accuracy": null
+            },
+            {
+              "depth": 1,
+              "width": 64,
+              "parameters": 8420,
+              "flops": 3551744,
+              "val_accuracy": 0.0,
+              "test_accuracy": null
+            },
+            {
+              "depth": 2,
+              "width": 16,
+              "parameters": 4532,
+              "flops": 5606528,
+              "val_accuracy": 0.0,
+              "test_accuracy": null
+            },
+            {
+              "depth": 2,
+              "width": 32,
+              "parameters": 13572,
+              "flops": 20650240,
+              "val_accuracy": 0.01,
+              "test_accuracy": null
+            },
+            {
+              "depth": 2,
+              "width": 48,
+              "parameters": 27220,
+              "flops": 45131136,
+              "val_accuracy": 0.01,
+              "test_accuracy": null
+            },
+            {
+              "depth": 2,
+              "width": 64,
+              "parameters": 45476,
+              "flops": 79049216,
+              "val_accuracy": 0.01,
+              "test_accuracy": null
+            },
+            {
+              "depth": 3,
+              "width": 16,
+              "parameters": 6884,
+              "flops": 6786176,
+              "val_accuracy": 0.02,
+              "test_accuracy": null
+            },
+            {
+              "depth": 3,
+              "width": 32,
+              "parameters": 22884,
+              "flops": 25368832,
+              "val_accuracy": 0.01,
+              "test_accuracy": null
+            },
+            {
+              "depth": 3,
+              "width": 48,
+              "parameters": 48100,
+              "flops": 55747968,
+              "val_accuracy": 0.01,
+              "test_accuracy": null
+            },
+            {
+              "depth": 3,
+              "width": 64,
+              "parameters": 82532,
+              "flops": 97923584,
+              "val_accuracy": 0.02,
+              "test_accuracy": null
+            },
+            {
+              "depth": 4,
+              "width": 16,
+              "parameters": 9236,
+              "flops": 7965824,
+              "val_accuracy": 0.01,
+              "test_accuracy": null
+            },
+            {
+              "depth": 4,
+              "width": 32,
+              "parameters": 32196,
+              "flops": 30087424,
+              "val_accuracy": 0.01,
+              "test_accuracy": null
+            },
+            {
+              "depth": 4,
+              "width": 48,
+              "parameters": 68980,
+              "flops": 66364800,
+              "val_accuracy": 0.02,
+              "test_accuracy": null
+            },
+            {
+              "depth": 4,
+              "width": 64,
+              "parameters": 119588,
+              "flops": 116797952,
+              "val_accuracy": 0.01,
+              "test_accuracy": null
+            }
+          ]
+        },
+        {
+          "round": 2,
+          "strategy": "fedavg",
+          "mean_client_loss": 4.448010206222534,
+          "participating_clients": 4,
+          "participation_rate": 1.0,
+          "total_upload_bytes": 1913408,
+          "total_download_bytes": 1913408,
+          "mean_active_flops": 116797952.0,
+          "mean_client_parameters": 119588.0,
+          "selected_depth": 1,
+          "selected_width": 16,
+          "selected_val_accuracy": 0.02,
+          "selected_test_accuracy": 0.004,
+          "candidate_scores": [
+            {
+              "depth": 1,
+              "width": 16,
+              "parameters": 2180,
+              "flops": 887936,
+              "val_accuracy": 0.02,
+              "test_accuracy": null
+            },
+            {
+              "depth": 1,
+              "width": 32,
+              "parameters": 4260,
+              "flops": 1775872,
+              "val_accuracy": 0.01,
+              "test_accuracy": null
+            },
+            {
+              "depth": 1,
+              "width": 48,
+              "parameters": 6340,
+              "flops": 2663808,
+              "val_accuracy": 0.01,
+              "test_accuracy": null
+            },
+            {
+              "depth": 1,
+              "width": 64,
+              "parameters": 8420,
+              "flops": 3551744,
+              "val_accuracy": 0.0,
+              "test_accuracy": null
+            },
+            {
+              "depth": 2,
+              "width": 16,
+              "parameters": 4532,
+              "flops": 5606528,
+              "val_accuracy": 0.0,
+              "test_accuracy": null
+            },
+            {
+              "depth": 2,
+              "width": 32,
+              "parameters": 13572,
+              "flops": 20650240,
+              "val_accuracy": 0.01,
+              "test_accuracy": null
+            },
+            {
+              "depth": 2,
+              "width": 48,
+              "parameters": 27220,
+              "flops": 45131136,
+              "val_accuracy": 0.01,
+              "test_accuracy": null
+            },
+            {
+              "depth": 2,
+              "width": 64,
+              "parameters": 45476,
+              "flops": 79049216,
+              "val_accuracy": 0.0,
+              "test_accuracy": null
+            },
+            {
+              "depth": 3,
+              "width": 16,
+              "parameters": 6884,
+              "flops": 6786176,
+              "val_accuracy": 0.02,
+              "test_accuracy": null
+            },
+            {
+              "depth": 3,
+              "width": 32,
+              "parameters": 22884,
+              "flops": 25368832,
+              "val_accuracy": 0.0,
+              "test_accuracy": null
+            },
+            {
+              "depth": 3,
+              "width": 48,
+              "parameters": 48100,
+              "flops": 55747968,
+              "val_accuracy": 0.0,
+              "test_accuracy": null
+            },
+            {
+              "depth": 3,
+              "width": 64,
+              "parameters": 82532,
+              "flops": 97923584,
+              "val_accuracy": 0.02,
+              "test_accuracy": null
+            },
+            {
+              "depth": 4,
+              "width": 16,
+              "parameters": 9236,
+              "flops": 7965824,
+              "val_accuracy": 0.0,
+              "test_accuracy": null
+            },
+            {
+              "depth": 4,
+              "width": 32,
+              "parameters": 32196,
+              "flops": 30087424,
+              "val_accuracy": 0.01,
+              "test_accuracy": null
+            },
+            {
+              "depth": 4,
+              "width": 48,
+              "parameters": 68980,
+              "flops": 66364800,
+              "val_accuracy": 0.01,
+              "test_accuracy": null
+            },
+            {
+              "depth": 4,
+              "width": 64,
+              "parameters": 119588,
+              "flops": 116797952,
+              "val_accuracy": 0.02,
+              "test_accuracy": null
+            }
+          ]
+        },
+        {
+          "round": 3,
+          "strategy": "fedavg",
+          "mean_client_loss": 4.458831071853638,
+          "participating_clients": 4,
+          "participation_rate": 1.0,
+          "total_upload_bytes": 1913408,
+          "total_download_bytes": 1913408,
+          "mean_active_flops": 116797952.0,
+          "mean_client_parameters": 119588.0,
+          "selected_depth": 3,
+          "selected_width": 16,
+          "selected_val_accuracy": 0.03,
+          "selected_test_accuracy": 0.012,
+          "candidate_scores": [
+            {
+              "depth": 1,
+              "width": 16,
+              "parameters": 2180,
+              "flops": 887936,
+              "val_accuracy": 0.02,
+              "test_accuracy": null
+            },
+            {
+              "depth": 1,
+              "width": 32,
+              "parameters": 4260,
+              "flops": 1775872,
+              "val_accuracy": 0.01,
+              "test_accuracy": null
+            },
+            {
+              "depth": 1,
+              "width": 48,
+              "parameters": 6340,
+              "flops": 2663808,
+              "val_accuracy": 0.01,
+              "test_accuracy": null
+            },
+            {
+              "depth": 1,
+              "width": 64,
+              "parameters": 8420,
+              "flops": 3551744,
+              "val_accuracy": 0.0,
+              "test_accuracy": null
+            },
+            {
+              "depth": 2,
+              "width": 16,
+              "parameters": 4532,
+              "flops": 5606528,
+              "val_accuracy": 0.01,
+              "test_accuracy": null
+            },
+            {
+              "depth": 2,
+              "width": 32,
+              "parameters": 13572,
+              "flops": 20650240,
+              "val_accuracy": 0.01,
+              "test_accuracy": null
+            },
+            {
+              "depth": 2,
+              "width": 48,
+              "parameters": 27220,
+              "flops": 45131136,
+              "val_accuracy": 0.0,
+              "test_accuracy": null
+            },
+            {
+              "depth": 2,
+              "width": 64,
+              "parameters": 45476,
+              "flops": 79049216,
+              "val_accuracy": 0.0,
+              "test_accuracy": null
+            },
+            {
+              "depth": 3,
+              "width": 16,
+              "parameters": 6884,
+              "flops": 6786176,
+              "val_accuracy": 0.03,
+              "test_accuracy": null
+            },
+            {
+              "depth": 3,
+              "width": 32,
+              "parameters": 22884,
+              "flops": 25368832,
+              "val_accuracy": 0.0,
+              "test_accuracy": null
+            },
+            {
+              "depth": 3,
+              "width": 48,
+              "parameters": 48100,
+              "flops": 55747968,
+              "val_accuracy": 0.01,
+              "test_accuracy": null
+            },
+            {
+              "depth": 3,
+              "width": 64,
+              "parameters": 82532,
+              "flops": 97923584,
+              "val_accuracy": 0.02,
+              "test_accuracy": null
+            },
+            {
+              "depth": 4,
+              "width": 16,
+              "parameters": 9236,
+              "flops": 7965824,
+              "val_accuracy": 0.03,
+              "test_accuracy": null
+            },
+            {
+              "depth": 4,
+              "width": 32,
+              "parameters": 32196,
+              "flops": 30087424,
+              "val_accuracy": 0.0,
+              "test_accuracy": null
+            },
+            {
+              "depth": 4,
+              "width": 48,
+              "parameters": 68980,
+              "flops": 66364800,
+              "val_accuracy": 0.02,
+              "test_accuracy": null
+            },
+            {
+              "depth": 4,
+              "width": 64,
+              "parameters": 119588,
+              "flops": 116797952,
+              "val_accuracy": 0.02,
+              "test_accuracy": null
+            }
+          ]
+        }
+      ],
+      "final": {
+        "round": 3,
+        "strategy": "fedavg",
+        "mean_client_loss": 4.458831071853638,
+        "participating_clients": 4,
+        "participation_rate": 1.0,
+        "total_upload_bytes": 1913408,
+        "total_download_bytes": 1913408,
+        "mean_active_flops": 116797952.0,
+        "mean_client_parameters": 119588.0,
+        "selected_depth": 3,
+        "selected_width": 16,
+        "selected_val_accuracy": 0.03,
+        "selected_test_accuracy": 0.012,
+        "candidate_scores": [
+          {
+            "depth": 1,
+            "width": 16,
+            "parameters": 2180,
+            "flops": 887936,
+            "val_accuracy": 0.02,
+            "test_accuracy": null
+          },
+          {
+            "depth": 1,
+            "width": 32,
+            "parameters": 4260,
+            "flops": 1775872,
+            "val_accuracy": 0.01,
+            "test_accuracy": null
+          },
+          {
+            "depth": 1,
+            "width": 48,
+            "parameters": 6340,
+            "flops": 2663808,
+            "val_accuracy": 0.01,
+            "test_accuracy": null
+          },
+          {
+            "depth": 1,
+            "width": 64,
+            "parameters": 8420,
+            "flops": 3551744,
+            "val_accuracy": 0.0,
+            "test_accuracy": null
+          },
+          {
+            "depth": 2,
+            "width": 16,
+            "parameters": 4532,
+            "flops": 5606528,
+            "val_accuracy": 0.01,
+            "test_accuracy": null
+          },
+          {
+            "depth": 2,
+            "width": 32,
+            "parameters": 13572,
+            "flops": 20650240,
+            "val_accuracy": 0.01,
+            "test_accuracy": null
+          },
+          {
+            "depth": 2,
+            "width": 48,
+            "parameters": 27220,
+            "flops": 45131136,
+            "val_accuracy": 0.0,
+            "test_accuracy": null
+          },
+          {
+            "depth": 2,
+            "width": 64,
+            "parameters": 45476,
+            "flops": 79049216,
+            "val_accuracy": 0.0,
+            "test_accuracy": null
+          },
+          {
+            "depth": 3,
+            "width": 16,
+            "parameters": 6884,
+            "flops": 6786176,
+            "val_accuracy": 0.03,
+            "test_accuracy": null
+          },
+          {
+            "depth": 3,
+            "width": 32,
+            "parameters": 22884,
+            "flops": 25368832,
+            "val_accuracy": 0.0,
+            "test_accuracy": null
+          },
+          {
+            "depth": 3,
+            "width": 48,
+            "parameters": 48100,
+            "flops": 55747968,
+            "val_accuracy": 0.01,
+            "test_accuracy": null
+          },
+          {
+            "depth": 3,
+            "width": 64,
+            "parameters": 82532,
+            "flops": 97923584,
+            "val_accuracy": 0.02,
+            "test_accuracy": null
+          },
+          {
+            "depth": 4,
+            "width": 16,
+            "parameters": 9236,
+            "flops": 7965824,
+            "val_accuracy": 0.03,
+            "test_accuracy": null
+          },
+          {
+            "depth": 4,
+            "width": 32,
+            "parameters": 32196,
+            "flops": 30087424,
+            "val_accuracy": 0.0,
+            "test_accuracy": null
+          },
+          {
+            "depth": 4,
+            "width": 48,
+            "parameters": 68980,
+            "flops": 66364800,
+            "val_accuracy": 0.02,
+            "test_accuracy": null
+          },
+          {
+            "depth": 4,
+            "width": 64,
+            "parameters": 119588,
+            "flops": 116797952,
+            "val_accuracy": 0.02,
+            "test_accuracy": null
+          }
+        ]
+      }
+    },
+    {
+      "dataset": "cifar100",
+      "variant": "elastic_cnn",
+      "num_classes": 100,
+      "clients": 4,
+      "rounds": 3,
+      "strategy": "elastic",
+      "history": [
+        {
+          "round": 1,
+          "strategy": "elastic",
+          "mean_client_loss": 4.6658923625946045,
+          "participating_clients": 4,
+          "participation_rate": 1.0,
+          "total_upload_bytes": 550080,
+          "total_download_bytes": 550080,
+          "mean_active_flops": 34806016.0,
+          "mean_client_parameters": 34380.0,
+          "selected_depth": 4,
+          "selected_width": 64,
+          "selected_val_accuracy": 0.03,
+          "selected_test_accuracy": 0.02,
+          "candidate_scores": [
+            {
+              "depth": 1,
+              "width": 16,
+              "parameters": 2180,
+              "flops": 887936,
+              "val_accuracy": 0.02,
+              "test_accuracy": null
+            },
+            {
+              "depth": 1,
+              "width": 32,
+              "parameters": 4260,
+              "flops": 1775872,
+              "val_accuracy": 0.01,
+              "test_accuracy": null
+            },
+            {
+              "depth": 1,
+              "width": 48,
+              "parameters": 6340,
+              "flops": 2663808,
+              "val_accuracy": 0.01,
+              "test_accuracy": null
+            },
+            {
+              "depth": 1,
+              "width": 64,
+              "parameters": 8420,
+              "flops": 3551744,
+              "val_accuracy": 0.0,
+              "test_accuracy": null
+            },
+            {
+              "depth": 2,
+              "width": 16,
+              "parameters": 4532,
+              "flops": 5606528,
+              "val_accuracy": 0.02,
+              "test_accuracy": null
+            },
+            {
+              "depth": 2,
+              "width": 32,
+              "parameters": 13572,
+              "flops": 20650240,
+              "val_accuracy": 0.01,
+              "test_accuracy": null
+            },
+            {
+              "depth": 2,
+              "width": 48,
+              "parameters": 27220,
+              "flops": 45131136,
+              "val_accuracy": 0.0,
+              "test_accuracy": null
+            },
+            {
+              "depth": 2,
+              "width": 64,
+              "parameters": 45476,
+              "flops": 79049216,
+              "val_accuracy": 0.02,
+              "test_accuracy": null
+            },
+            {
+              "depth": 3,
+              "width": 16,
+              "parameters": 6884,
+              "flops": 6786176,
+              "val_accuracy": 0.02,
+              "test_accuracy": null
+            },
+            {
+              "depth": 3,
+              "width": 32,
+              "parameters": 22884,
+              "flops": 25368832,
+              "val_accuracy": 0.01,
+              "test_accuracy": null
+            },
+            {
+              "depth": 3,
+              "width": 48,
+              "parameters": 48100,
+              "flops": 55747968,
+              "val_accuracy": 0.0,
+              "test_accuracy": null
+            },
+            {
+              "depth": 3,
+              "width": 64,
+              "parameters": 82532,
+              "flops": 97923584,
+              "val_accuracy": 0.02,
+              "test_accuracy": null
+            },
+            {
+              "depth": 4,
+              "width": 16,
+              "parameters": 9236,
+              "flops": 7965824,
+              "val_accuracy": 0.01,
+              "test_accuracy": null
+            },
+            {
+              "depth": 4,
+              "width": 32,
+              "parameters": 32196,
+              "flops": 30087424,
+              "val_accuracy": 0.01,
+              "test_accuracy": null
+            },
+            {
+              "depth": 4,
+              "width": 48,
+              "parameters": 68980,
+              "flops": 66364800,
+              "val_accuracy": 0.02,
+              "test_accuracy": null
+            },
+            {
+              "depth": 4,
+              "width": 64,
+              "parameters": 119588,
+              "flops": 116797952,
+              "val_accuracy": 0.03,
+              "test_accuracy": null
+            }
+          ]
+        },
+        {
+          "round": 2,
+          "strategy": "elastic",
+          "mean_client_loss": 4.467645168304443,
+          "participating_clients": 4,
+          "participation_rate": 1.0,
+          "total_upload_bytes": 595648,
+          "total_download_bytes": 595648,
+          "mean_active_flops": 39746592.0,
+          "mean_client_parameters": 37228.0,
+          "selected_depth": 1,
+          "selected_width": 16,
+          "selected_val_accuracy": 0.02,
+          "selected_test_accuracy": 0.002,
+          "candidate_scores": [
+            {
+              "depth": 1,
+              "width": 16,
+              "parameters": 2180,
+              "flops": 887936,
+              "val_accuracy": 0.02,
+              "test_accuracy": null
+            },
+            {
+              "depth": 1,
+              "width": 32,
+              "parameters": 4260,
+              "flops": 1775872,
+              "val_accuracy": 0.01,
+              "test_accuracy": null
+            },
+            {
+              "depth": 1,
+              "width": 48,
+              "parameters": 6340,
+              "flops": 2663808,
+              "val_accuracy": 0.01,
+              "test_accuracy": null
+            },
+            {
+              "depth": 1,
+              "width": 64,
+              "parameters": 8420,
+              "flops": 3551744,
+              "val_accuracy": 0.0,
+              "test_accuracy": null
+            },
+            {
+              "depth": 2,
+              "width": 16,
+              "parameters": 4532,
+              "flops": 5606528,
+              "val_accuracy": 0.02,
+              "test_accuracy": null
+            },
+            {
+              "depth": 2,
+              "width": 32,
+              "parameters": 13572,
+              "flops": 20650240,
+              "val_accuracy": 0.01,
+              "test_accuracy": null
+            },
+            {
+              "depth": 2,
+              "width": 48,
+              "parameters": 27220,
+              "flops": 45131136,
+              "val_accuracy": 0.01,
+              "test_accuracy": null
+            },
+            {
+              "depth": 2,
+              "width": 64,
+              "parameters": 45476,
+              "flops": 79049216,
+              "val_accuracy": 0.0,
+              "test_accuracy": null
+            },
+            {
+              "depth": 3,
+              "width": 16,
+              "parameters": 6884,
+              "flops": 6786176,
+              "val_accuracy": 0.02,
+              "test_accuracy": null
+            },
+            {
+              "depth": 3,
+              "width": 32,
+              "parameters": 22884,
+              "flops": 25368832,
+              "val_accuracy": 0.0,
+              "test_accuracy": null
+            },
+            {
+              "depth": 3,
+              "width": 48,
+              "parameters": 48100,
+              "flops": 55747968,
+              "val_accuracy": 0.01,
+              "test_accuracy": null
+            },
+            {
+              "depth": 3,
+              "width": 64,
+              "parameters": 82532,
+              "flops": 97923584,
+              "val_accuracy": 0.02,
+              "test_accuracy": null
+            },
+            {
+              "depth": 4,
+              "width": 16,
+              "parameters": 9236,
+              "flops": 7965824,
+              "val_accuracy": 0.02,
+              "test_accuracy": null
+            },
+            {
+              "depth": 4,
+              "width": 32,
+              "parameters": 32196,
+              "flops": 30087424,
+              "val_accuracy": 0.0,
+              "test_accuracy": null
+            },
+            {
+              "depth": 4,
+              "width": 48,
+              "parameters": 68980,
+              "flops": 66364800,
+              "val_accuracy": 0.01,
+              "test_accuracy": null
+            },
+            {
+              "depth": 4,
+              "width": 64,
+              "parameters": 119588,
+              "flops": 116797952,
+              "val_accuracy": 0.01,
+              "test_accuracy": null
+            }
+          ]
+        },
+        {
+          "round": 3,
+          "strategy": "elastic",
+          "mean_client_loss": 4.4383485317230225,
+          "participating_clients": 4,
+          "participation_rate": 1.0,
+          "total_upload_bytes": 1019712,
+          "total_download_bytes": 1019712,
+          "mean_active_flops": 63783520.0,
+          "mean_client_parameters": 63732.0,
+          "selected_depth": 3,
+          "selected_width": 64,
+          "selected_val_accuracy": 0.03,
+          "selected_test_accuracy": 0.018,
+          "candidate_scores": [
+            {
+              "depth": 1,
+              "width": 16,
+              "parameters": 2180,
+              "flops": 887936,
+              "val_accuracy": 0.02,
+              "test_accuracy": null
+            },
+            {
+              "depth": 1,
+              "width": 32,
+              "parameters": 4260,
+              "flops": 1775872,
+              "val_accuracy": 0.01,
+              "test_accuracy": null
+            },
+            {
+              "depth": 1,
+              "width": 48,
+              "parameters": 6340,
+              "flops": 2663808,
+              "val_accuracy": 0.01,
+              "test_accuracy": null
+            },
+            {
+              "depth": 1,
+              "width": 64,
+              "parameters": 8420,
+              "flops": 3551744,
+              "val_accuracy": 0.0,
+              "test_accuracy": null
+            },
+            {
+              "depth": 2,
+              "width": 16,
+              "parameters": 4532,
+              "flops": 5606528,
+              "val_accuracy": 0.02,
+              "test_accuracy": null
+            },
+            {
+              "depth": 2,
+              "width": 32,
+              "parameters": 13572,
+              "flops": 20650240,
+              "val_accuracy": 0.01,
+              "test_accuracy": null
+            },
+            {
+              "depth": 2,
+              "width": 48,
+              "parameters": 27220,
+              "flops": 45131136,
+              "val_accuracy": 0.01,
+              "test_accuracy": null
+            },
+            {
+              "depth": 2,
+              "width": 64,
+              "parameters": 45476,
+              "flops": 79049216,
+              "val_accuracy": 0.01,
+              "test_accuracy": null
+            },
+            {
+              "depth": 3,
+              "width": 16,
+              "parameters": 6884,
+              "flops": 6786176,
+              "val_accuracy": 0.02,
+              "test_accuracy": null
+            },
+            {
+              "depth": 3,
+              "width": 32,
+              "parameters": 22884,
+              "flops": 25368832,
+              "val_accuracy": 0.01,
+              "test_accuracy": null
+            },
+            {
+              "depth": 3,
+              "width": 48,
+              "parameters": 48100,
+              "flops": 55747968,
+              "val_accuracy": 0.01,
+              "test_accuracy": null
+            },
+            {
+              "depth": 3,
+              "width": 64,
+              "parameters": 82532,
+              "flops": 97923584,
+              "val_accuracy": 0.03,
+              "test_accuracy": null
+            },
+            {
+              "depth": 4,
+              "width": 16,
+              "parameters": 9236,
+              "flops": 7965824,
+              "val_accuracy": 0.02,
+              "test_accuracy": null
+            },
+            {
+              "depth": 4,
+              "width": 32,
+              "parameters": 32196,
+              "flops": 30087424,
+              "val_accuracy": 0.01,
+              "test_accuracy": null
+            },
+            {
+              "depth": 4,
+              "width": 48,
+              "parameters": 68980,
+              "flops": 66364800,
+              "val_accuracy": 0.01,
+              "test_accuracy": null
+            },
+            {
+              "depth": 4,
+              "width": 64,
+              "parameters": 119588,
+              "flops": 116797952,
+              "val_accuracy": 0.02,
+              "test_accuracy": null
+            }
+          ]
+        }
+      ],
+      "final": {
+        "round": 3,
+        "strategy": "elastic",
+        "mean_client_loss": 4.4383485317230225,
+        "participating_clients": 4,
+        "participation_rate": 1.0,
+        "total_upload_bytes": 1019712,
+        "total_download_bytes": 1019712,
+        "mean_active_flops": 63783520.0,
+        "mean_client_parameters": 63732.0,
+        "selected_depth": 3,
+        "selected_width": 64,
+        "selected_val_accuracy": 0.03,
+        "selected_test_accuracy": 0.018,
+        "candidate_scores": [
+          {
+            "depth": 1,
+            "width": 16,
+            "parameters": 2180,
+            "flops": 887936,
+            "val_accuracy": 0.02,
+            "test_accuracy": null
+          },
+          {
+            "depth": 1,
+            "width": 32,
+            "parameters": 4260,
+            "flops": 1775872,
+            "val_accuracy": 0.01,
+            "test_accuracy": null
+          },
+          {
+            "depth": 1,
+            "width": 48,
+            "parameters": 6340,
+            "flops": 2663808,
+            "val_accuracy": 0.01,
+            "test_accuracy": null
+          },
+          {
+            "depth": 1,
+            "width": 64,
+            "parameters": 8420,
+            "flops": 3551744,
+            "val_accuracy": 0.0,
+            "test_accuracy": null
+          },
+          {
+            "depth": 2,
+            "width": 16,
+            "parameters": 4532,
+            "flops": 5606528,
+            "val_accuracy": 0.02,
+            "test_accuracy": null
+          },
+          {
+            "depth": 2,
+            "width": 32,
+            "parameters": 13572,
+            "flops": 20650240,
+            "val_accuracy": 0.01,
+            "test_accuracy": null
+          },
+          {
+            "depth": 2,
+            "width": 48,
+            "parameters": 27220,
+            "flops": 45131136,
+            "val_accuracy": 0.01,
+            "test_accuracy": null
+          },
+          {
+            "depth": 2,
+            "width": 64,
+            "parameters": 45476,
+            "flops": 79049216,
+            "val_accuracy": 0.01,
+            "test_accuracy": null
+          },
+          {
+            "depth": 3,
+            "width": 16,
+            "parameters": 6884,
+            "flops": 6786176,
+            "val_accuracy": 0.02,
+            "test_accuracy": null
+          },
+          {
+            "depth": 3,
+            "width": 32,
+            "parameters": 22884,
+            "flops": 25368832,
+            "val_accuracy": 0.01,
+            "test_accuracy": null
+          },
+          {
+            "depth": 3,
+            "width": 48,
+            "parameters": 48100,
+            "flops": 55747968,
+            "val_accuracy": 0.01,
+            "test_accuracy": null
+          },
+          {
+            "depth": 3,
+            "width": 64,
+            "parameters": 82532,
+            "flops": 97923584,
+            "val_accuracy": 0.03,
+            "test_accuracy": null
+          },
+          {
+            "depth": 4,
+            "width": 16,
+            "parameters": 9236,
+            "flops": 7965824,
+            "val_accuracy": 0.02,
+            "test_accuracy": null
+          },
+          {
+            "depth": 4,
+            "width": 32,
+            "parameters": 32196,
+            "flops": 30087424,
+            "val_accuracy": 0.01,
+            "test_accuracy": null
+          },
+          {
+            "depth": 4,
+            "width": 48,
+            "parameters": 68980,
+            "flops": 66364800,
+            "val_accuracy": 0.01,
+            "test_accuracy": null
+          },
+          {
+            "depth": 4,
+            "width": 64,
+            "parameters": 119588,
+            "flops": 116797952,
+            "val_accuracy": 0.02,
+            "test_accuracy": null
+          }
+        ]
+      }
+    }
+  ]
+}

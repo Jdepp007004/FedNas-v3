@@ -11,13 +11,15 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from contextlib import asynccontextmanager  # noqa: E402
 
 from fastapi import FastAPI, Request  # noqa: E402
-from fastapi.responses import HTMLResponse, JSONResponse  # noqa: E402
+from fastapi.responses import HTMLResponse, JSONResponse, FileResponse  # noqa: E402
 from fastapi.staticfiles import StaticFiles  # noqa: E402
 from fastapi.templating import Jinja2Templates  # noqa: E402
 
 from auth_router import router as auth_router  # noqa: E402
 from project_router import router as project_router, set_val_dataloader  # noqa: E402
 from demo_router import router as demo_router, sim_router  # noqa: E402
+from host_router import router as host_router  # noqa: E402
+from live_router import router as live_router  # noqa: E402
 from ngrok_tunnel import start_ngrok_tunnel, get_tunnel_url  # noqa: E402
 from db_handler import read_db, write_db  # noqa: E402
 from shared.model_schema import MODEL_CONFIG, SERVER_SCHEMA  # noqa: E402
@@ -146,6 +148,8 @@ app.include_router(auth_router)
 app.include_router(project_router)
 app.include_router(sim_router)   # /api/sim/*  — used by simulation page
 app.include_router(demo_router)  # /api/demo/* — backward-compat alias
+app.include_router(host_router)
+app.include_router(live_router)
 
 
 # ─── Utility Endpoints ────────────────────────────────────────────────────────
@@ -200,6 +204,21 @@ async def dashboard(request: Request):
         "server_version": SERVER_VERSION,
         "jwt_secret":     os.environ.get("JWT_SECRET", "dev_secret_change_in_production"),
     })
+
+
+@app.get("/host", response_class=HTMLResponse)
+async def host_console(request: Request):
+    """Host console for approvals, uploads, resources, and round planning."""
+    return templates.TemplateResponse("host.html", {"request": request})
+
+
+@app.get("/client", response_class=HTMLResponse)
+async def client_console(request: Request):
+    """Browser control plane for a participant's local training client."""
+    return FileResponse(
+        os.path.join(os.path.dirname(__file__), "..", "client", "client.html"),
+        media_type="text/html",
+    )
 
 
 @app.get("/simulation", response_class=HTMLResponse)
