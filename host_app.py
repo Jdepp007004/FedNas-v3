@@ -22,7 +22,10 @@ if SERVER_DIR not in sys.path:
 
 from local_env import load_env_file
 
-load_env_file(os.environ.get("FL_ENV_FILE", os.path.join(ROOT, ".env")))
+# The host is self-contained: when the project-local .env exists, always use
+# it instead of allowing a stale FL_ENV_FILE from another checkout to mask it.
+_host_env = os.path.join(ROOT, ".env")
+load_env_file(_host_env if os.path.exists(_host_env) else os.environ.get("FL_ENV_FILE", _host_env))
 
 import uvicorn
 
