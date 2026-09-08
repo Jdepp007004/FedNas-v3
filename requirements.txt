@@ -1,0 +1,4 @@
+# Install the complete standalone FedNas-v3 application from the repository root.
+# These requirement files are both inside this repository.
+-r server/requirements.txt
+-r client/requirements.txt

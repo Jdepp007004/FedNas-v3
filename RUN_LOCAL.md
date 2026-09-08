@@ -6,9 +6,9 @@ client trainer.
 
 ## Dataset recommendation
 
-Use the checked-in `data/full_dataset.csv`. It is the cleaned clinical dataset
-already shaped for this platform's feature schema. The raw `SEER_cleaned.csv`
-has different column names and would need a separate preprocessing adapter.
+Use the four checked-in files in `split_data/`. They are the standalone client
+inputs and are already shaped for this platform's feature schema. The optional
+full dataset is not required to run the host or clients.
 
 The four ready-to-share partitions are in `split_data/`:
 
@@ -29,8 +29,7 @@ metadata, and model updates; it does not upload client rows.
 From the repository root:
 
 ```powershell
-pip install -r server/requirements.txt
-pip install -r client/requirements.txt
+pip install -r requirements.txt
 ```
 
 The repository now has a local `.env` file for this workspace. It is ignored by

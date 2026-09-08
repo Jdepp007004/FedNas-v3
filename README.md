@@ -139,20 +139,22 @@ fl_platform/
 ### Quick Install
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/fl_platform.git
-cd fl_platform
-pip install -r server/requirements.txt
-pip install -r client/requirements.txt
+git clone https://github.com/Jdepp007004/FedNas-v3.git
+cd FedNas-v3
+pip install -r requirements.txt
 ```
 
 ---
 
 ## Dataset
 
-Clinical data is downloaded automatically from the [NIH GDC API](https://api.gdc.cancer.gov) — no login required.
+The standalone repository already includes four ready-to-use client splits in
+`split_data/`. No parent repository or external dataset folder is required to
+run the host and clients. A new dataset can optionally be downloaded from the
+[NIH GDC API](https://api.gdc.cancer.gov) — no login required.
 
 ```bash
-# Download 10,000 TCGA cases and split into 4 client silos
+# Optional: download 10,000 TCGA cases and split into 4 client silos
 python download_and_split.py --max-cases 10000 --n-clients 4
 ```
 
@@ -173,16 +175,8 @@ data/
 ### Server (coordinator machine)
 
 ```powershell
-# 1. Generate encryption key
-python -c "import base64,os; print(base64.b64encode(os.urandom(32)).decode())"
-
-# 2. Set environment variables
-$env:FL_ENCRYPTION_KEY = "PASTE_KEY_HERE"
-$env:JWT_SECRET        = "any_dev_secret"
-$env:NGROK_AUTH_TOKEN  = "your_ngrok_token"
-
-# 3. Install & start
-pip install -r server/requirements.txt
+# Create the local .env from .env.example and set the ngrok token/key once.
+# Then run the self-contained host from this repository root.
 python host_app.py
 ```
 
@@ -199,7 +193,6 @@ INFO:     Uvicorn running on http://0.0.0.0:8000
 ### Client — no-command workflow
 
 ```powershell
-pip install -r client/requirements.txt
 python client_app.py
 ```
 
