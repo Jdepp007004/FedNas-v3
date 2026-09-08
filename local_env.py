@@ -18,5 +18,8 @@ def load_env_file(path: str | os.PathLike[str] | None = None) -> None:
         key, value = line.split("=", 1)
         key = key.strip()
         value = value.strip().strip('"').strip("'")
-        if key and key not in os.environ:
+        # A blank shell variable should not mask a configured value in the
+        # repository's local .env file. Preserve non-empty environment vars so
+        # explicit runtime overrides still work.
+        if key and not os.environ.get(key, "").strip():
             os.environ[key] = value
