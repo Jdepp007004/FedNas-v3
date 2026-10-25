@@ -26,6 +26,7 @@ from shared.model_schema import REQUIRED_COLUMNS, SERVER_SCHEMA
 router = APIRouter(prefix="/api/host", tags=["host"])
 UPLOAD_ROOT = Path(__file__).resolve().parent / "uploads"
 MAX_UPLOAD_BYTES = int(os.environ.get("MAX_DATASET_UPLOAD_BYTES", str(200 * 1024 * 1024)))
+MAX_SUPERNET_UPLOAD_BYTES = int(os.environ.get("MAX_SUPERNET_UPLOAD_BYTES", str(50 * 1024 * 1024)))
 
 
 def _now() -> str:
@@ -52,6 +53,89 @@ def _http_error(status: int, detail: str):
     return HTTPException(status_code=status, detail=detail)
 
 
+def _load_uploaded_supernet_weights(content: bytes, filename: str, model_config: dict, task_config: dict, model):
+    """Read safe NumPy weights or this app's exported bundle; never unpickle uploads."""
+    suffix = Path(filename).suffix.lower()
+    weights_content = content
+    if suffix == ".zip":
+        try:
+            with zipfile.ZipFile(io.BytesIO(content)) as bundle:
+                members = bundle.infolist()
+                names = [member.filename for member in members]
+                if len(names) != len(set(names)):
+                    raise ValueError("The model ZIP contains duplicate filenames.")
+                if sum(member.file_size for member in members) > MAX_SUPERNET_UPLOAD_BYTES * 2:
+                    raise ValueError("The expanded model ZIP is too large.")
+                required = {"manifest.json", "task_config.json", "model_config.json", "weights.npz"}
+                if not required.issubset(names):
+                    raise ValueError("The ZIP must be a model bundle exported by this website.")
+                if any(member.file_size > 1024 * 1024 for member in members if member.filename.endswith(".json")):
+                    raise ValueError("Model bundle metadata exceeds the 1 MB limit.")
+                manifest = json.loads(bundle.read("manifest.json"))
+                source_task = json.loads(bundle.read("task_config.json"))
+                source_model = json.loads(bundle.read("model_config.json"))
+                if not isinstance(manifest, dict) or manifest.get("format") != "fl-platform-tabular-bundle-v1":
+                    raise ValueError("This model ZIP format is not supported.")
+                expected_config = {key: int(model_config[key]) for key in ("input_dim", "max_depth", "max_width", "output_dim")}
+                if not isinstance(source_task, dict) or not isinstance(source_model, dict) or source_model != expected_config:
+                    raise ValueError("The uploaded model's input size, depth, width, or output size does not match this workspace.")
+                if source_task.get("task_type") != task_config.get("task_type"):
+                    raise ValueError("The uploaded model's task type does not match this workspace.")
+                if task_config.get("task_type") == "classification" and source_task.get("classes") != task_config.get("classes"):
+                    raise ValueError("The uploaded model's class labels or label order do not match this workspace.")
+                weights_content = bundle.read("weights.npz")
+        except (zipfile.BadZipFile, KeyError, json.JSONDecodeError, UnicodeDecodeError) as exc:
+            raise ValueError("Could not read the model ZIP. Upload a model bundle exported by this website.") from exc
+    elif suffix != ".npz":
+        raise ValueError("Upload a .npz weights file or a model .zip exported by this website.")
+
+    if len(weights_content) > MAX_SUPERNET_UPLOAD_BYTES:
+        raise ValueError(f"The weights file exceeds the {MAX_SUPERNET_UPLOAD_BYTES // (1024 * 1024)} MB limit.")
+    import torch
+    try:
+        with zipfile.ZipFile(io.BytesIO(weights_content)) as archive:
+            entries = archive.infolist()
+            entry_names = [entry.filename for entry in entries]
+            if len(entry_names) != len(set(entry_names)):
+                raise ValueError("The weights archive contains duplicate arrays.")
+            if sum(entry.file_size for entry in entries) > MAX_SUPERNET_UPLOAD_BYTES * 2:
+                raise ValueError("The expanded weights file is too large.")
+            expected_names = {f"{key}.npy" for key in model.state_dict()}
+            if set(entry_names) != expected_names:
+                raise ValueError("The weights do not match the elastic tabular MLP parameter names.")
+            expected = model.state_dict()
+            for entry in entries:
+                key = entry.filename[:-4]
+                with archive.open(entry) as array_file:
+                    version = np.lib.format.read_magic(array_file)
+                    if version == (1, 0):
+                        shape, _, dtype = np.lib.format.read_array_header_1_0(array_file)
+                    elif version == (2, 0):
+                        shape, _, dtype = np.lib.format.read_array_header_2_0(array_file)
+                    else:
+                        raise ValueError(f"Uploaded parameter '{key}' uses an unsupported NumPy array format.")
+                if tuple(shape) != tuple(expected[key].shape) or dtype.kind not in "fiu":
+                    raise ValueError(f"Uploaded parameter '{key}' has an invalid shape or data type.")
+        with np.load(io.BytesIO(weights_content), allow_pickle=False) as archive:
+            expected = model.state_dict()
+            if set(archive.files) != set(expected):
+                raise ValueError("The weights do not match the elastic tabular MLP parameter names.")
+            loaded = {}
+            for key, target in expected.items():
+                array = np.asarray(archive[key])
+                if array.shape != tuple(target.shape) or array.dtype.kind not in "fiu":
+                    raise ValueError(f"Uploaded parameter '{key}' has an invalid shape or data type.")
+                array = array.astype(np.float32, copy=False)
+                if not np.isfinite(array).all():
+                    raise ValueError(f"Uploaded parameter '{key}' contains non-finite values.")
+                loaded[key] = torch.from_numpy(array.copy()).to(dtype=target.dtype)
+        model.load_state_dict(loaded, strict=True)
+    except (OSError, ValueError, TypeError, EOFError) as exc:
+        if isinstance(exc, ValueError) and str(exc).startswith(("The ", "Uploaded ")):
+            raise
+        raise ValueError("Could not read the weights. Upload a valid NumPy .npz state dictionary or exported model ZIP.") from exc
+
+
 class HostSettings(BaseModel):
     max_rounds: int | None = None
     min_clients_per_round: int | None = None
@@ -67,6 +151,7 @@ async def host_projects(_: dict = Depends(_require_host)):
         "max_rounds": project.get("max_rounds", 20),
         "model_family": project.get("model_family", "clinical_multitask"),
         "task_config": project.get("task_config", {}),
+        "supernet_initialization": project.get("supernet_initialization", {"source": "built_in_default"}),
     } for project in db.get("projects", [])]
 
 
@@ -79,6 +164,7 @@ async def create_tabular_project(
     max_depth: int = Form(3),
     max_width: int = Form(64),
     file: UploadFile = File(...),
+    supernet_file: UploadFile | None = File(None),
     _: dict = Depends(_require_host),
 ):
     """Create a self-serve classification or regression workspace from CSV."""
@@ -125,6 +211,21 @@ async def create_tabular_project(
     except Exception as exc:
         raise _http_error(422, f"Could not configure this tabular task: {exc}") from exc
 
+    import torch
+    torch.manual_seed(2026)
+    model = ElasticTabularMLP(model_config)
+    initialization = {"source": "built_in_default"}
+    if supernet_file is not None and supernet_file.filename:
+        supernet_name = re.split(r"[/\\]", supernet_file.filename)[-1]
+        supernet_content = await supernet_file.read(MAX_SUPERNET_UPLOAD_BYTES + 1)
+        if len(supernet_content) > MAX_SUPERNET_UPLOAD_BYTES:
+            raise _http_error(413, f"The supernet file exceeds the {MAX_SUPERNET_UPLOAD_BYTES // (1024 * 1024)} MB limit.")
+        try:
+            _load_uploaded_supernet_weights(supernet_content, supernet_name, model_config, task_config, model)
+        except ValueError as exc:
+            raise _http_error(422, str(exc)) from exc
+        initialization = {"source": "uploaded_checkpoint", "filename": supernet_name}
+
     proj_id = str(uuid.uuid4())
     destination = UPLOAD_ROOT / proj_id
     destination.mkdir(parents=True, exist_ok=True)
@@ -133,9 +234,6 @@ async def create_tabular_project(
     digest = hashlib.sha256(content).hexdigest()
 
     # Every participant starts from the same coordinator-owned initialization.
-    import torch
-    torch.manual_seed(2026)
-    model = ElasticTabularMLP(model_config)
     model_path = Path(__file__).resolve().parent / "models" / f"{proj_id}_round0.pt"
     model_path.parent.mkdir(parents=True, exist_ok=True)
     torch.save(model.state_dict(), model_path)
@@ -147,6 +245,7 @@ async def create_tabular_project(
         "model_family": "elastic_tabular",
         "model_config": model_config,
         "task_config": task_config,
+        "supernet_initialization": initialization,
         "data_schema": {"model_family": "elastic_tabular", "task_type": task_config["task_type"], "target_column": target_column.strip()},
         "schema_version": "tabular-1.0.0",
         "current_round": 0,
@@ -190,6 +289,7 @@ async def create_tabular_project(
         "classes": task_config.get("classes", []),
         "max_depth": model_config["max_depth"],
         "max_width": model_config["max_width"],
+        "supernet_initialization": initialization,
     })
 
 

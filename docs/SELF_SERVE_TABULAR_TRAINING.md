@@ -5,7 +5,13 @@ classification or regression, names the target column, and supplies a setup
 CSV that is separate from participant training data. A deterministic 80/20
 split uses the reference portion for shared preprocessing statistics and keeps
 the 20% validation slice on the host for coordinator-side metrics. The
-coordinator initializes the global model before any participant joins.
+coordinator initializes the global model before any participant joins. The
+built-in elastic tabular supernet is loaded by default. The host can optionally
+upload a compatible `.npz` state dictionary or a model ZIP exported by this
+website to use its weights as the starting checkpoint. Uploads are validated
+against the selected model dimensions and task; classification bundles must
+also have the same ordered class labels. Uploaded executable model code and
+other architectures are not supported.
 Participants choose that workspace, attach their own CSV locally, request
 access, and wait for host approval.
 
