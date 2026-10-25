@@ -68,11 +68,30 @@ def depth_for_profile(profile: dict | None, max_depth: int | None = None) -> int
     return int(depth)
 
 
+def width_for_profile(profile: dict | None, max_width: int = 128) -> int:
+    """Choose a nested MLP width from the resources a client dedicated.
+
+    Width tiers are multiples of 16 so the plan remains easy to explain and
+    the client's update is a contiguous prefix that the coordinator can merge.
+    """
+    normalised = normalise_hardware_profile(profile)
+    upper = max(16, int(max_width))
+    raw_width = min(
+        upper,
+        int(normalised["dedicated_ram_gb"] * 16),
+        int(normalised["dedicated_cpu_cores"] * 32),
+    )
+    width = max(16, (raw_width // 16) * 16)
+    return min(upper, width)
+
+
 def build_round_plan(project: dict, users_by_id: dict[str, dict] | None = None) -> dict:
     """Build the explainable round plan shown to host and participants."""
 
     users_by_id = users_by_id or {}
     max_depth = max(2, int(project.get("max_depth", MODEL_CONFIG["max_depth"])))
+    model_config = project.get("model_config", {}) or {}
+    max_width = int(model_config.get("max_width", model_config.get("hidden_dim", MODEL_CONFIG.get("hidden_dim", 256))))
     profiles = project.get("client_profiles", {}) or {}
     connected = project.get("connected_clients", []) or []
     costs = []
@@ -90,6 +109,7 @@ def build_round_plan(project: dict, users_by_id: dict[str, dict] | None = None) 
         record = profiles.get(user_id, {}) or {}
         hardware = normalise_hardware_profile(record.get("hardware_profile", record))
         depth = depth_for_profile(hardware, max_depth)
+        width = width_for_profile(hardware, max_width)
         user = users_by_id.get(user_id, {})
         selected_layers = [cost["name"] for cost in costs if cost["layer"] <= depth]
         if depth >= max_depth:
@@ -104,16 +124,22 @@ def build_round_plan(project: dict, users_by_id: dict[str, dict] | None = None) 
             "display_name": user.get("hospital_name", user.get("username", user_id[:8])),
             "hardware": hardware,
             "selected_depth": depth,
+            "selected_width": width if project.get("model_family") == "elastic_tabular" else None,
             "selected_layers": selected_layers,
-            "reason": reason,
+            "reason": reason + (f" Active prefix width: {width} units." if project.get("model_family") == "elastic_tabular" else ""),
             "dataset_rows": int((record.get("dataset_meta", {}) or {}).get("rows", hardware.get("local_data_size", 0)) or 0),
         })
 
     return {
         "round": int(project.get("current_round", 0)),
         "max_rounds": int(project.get("max_rounds", 20)),
-        "objective": "Select the deepest subnet that fits each client's explicitly dedicated resources.",
-        "formula": "depth = clamp(min(floor(dedicated_ram/1.5)+1, floor(dedicated_cpu/1.25)+1) + GPU bonus, 2, max_depth)",
+        "objective": "Select a model prefix that fits each client's explicitly dedicated resources.",
+        "formula": (
+            "depth = clamp(min(floor(dedicated_ram/1.5)+1, floor(dedicated_cpu/1.25)+1) + GPU bonus, 2, max_depth); "
+            "width = floor(min(16×dedicated_RAM_GB, 32×dedicated_CPU_cores)/16)×16"
+            if project.get("model_family") == "elastic_tabular"
+            else "depth = clamp(min(floor(dedicated_ram/1.5)+1, floor(dedicated_cpu/1.25)+1) + GPU bonus, 2, max_depth)"
+        ),
         "max_depth": max_depth,
         "layer_costs": costs,
         "clients": clients,

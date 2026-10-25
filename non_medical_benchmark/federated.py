@@ -3,9 +3,13 @@
 from __future__ import annotations
 
 import copy
+import ctypes
 import math
+import multiprocessing
+import os
 import random
 import time
+from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass
 from typing import Optional
 
@@ -35,6 +39,169 @@ from .security import (
 )
 
 
+CC_EFL_PREFIX_WARMUP_FRACTION = 0.2
+
+_CLIENT_WORKER_BUNDLE = None
+_CLIENT_WORKER_SPEC = None
+
+
+def _initialize_client_worker(bundle: DatasetBundle, spec: DatasetSpec) -> None:
+    """Initialize the immutable training data once in a spawned client worker."""
+    global _CLIENT_WORKER_BUNDLE, _CLIENT_WORKER_SPEC
+    _CLIENT_WORKER_BUNDLE = bundle
+    _CLIENT_WORKER_SPEC = spec
+    torch.set_num_threads(1)
+    torch.set_num_interop_threads(1)
+
+
+def _set_worker_affinity(cpu_ids: list[int]) -> None:
+    """Restrict a worker process to its assigned logical processor IDs."""
+    if not cpu_ids:
+        raise ValueError("each virtual client needs at least one logical processor")
+    if hasattr(os, "sched_setaffinity"):
+        os.sched_setaffinity(0, set(cpu_ids))
+        return
+    if os.name == "nt":
+        mask = sum(1 << int(cpu_id) for cpu_id in cpu_ids)
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        kernel32.GetCurrentProcess.restype = ctypes.c_void_p
+        kernel32.SetProcessAffinityMask.argtypes = [ctypes.c_void_p, ctypes.c_size_t]
+        kernel32.SetProcessAffinityMask.restype = ctypes.c_int
+        if not kernel32.SetProcessAffinityMask(kernel32.GetCurrentProcess(), mask):
+            raise OSError(ctypes.get_last_error(), "SetProcessAffinityMask failed")
+        return
+    raise RuntimeError("CPU affinity control is unsupported on this platform")
+
+
+def _current_cpu_affinity() -> list[int]:
+    """Return logical processor IDs currently available to this process."""
+    if hasattr(os, "sched_getaffinity"):
+        return sorted(os.sched_getaffinity(0))
+    if os.name == "nt":
+        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        kernel32.GetCurrentProcess.restype = ctypes.c_void_p
+        kernel32.GetProcessAffinityMask.argtypes = [
+            ctypes.c_void_p,
+            ctypes.POINTER(ctypes.c_size_t),
+            ctypes.POINTER(ctypes.c_size_t),
+        ]
+        process_mask = ctypes.c_size_t()
+        system_mask = ctypes.c_size_t()
+        ok = kernel32.GetProcessAffinityMask(
+            kernel32.GetCurrentProcess(),
+            ctypes.byref(process_mask),
+            ctypes.byref(system_mask),
+        )
+        if not ok:
+            raise OSError(ctypes.get_last_error(), "GetProcessAffinityMask failed")
+        return [
+            cpu_id
+            for cpu_id in range(ctypes.sizeof(ctypes.c_size_t) * 8)
+            if process_mask.value & (1 << cpu_id)
+        ]
+    raise RuntimeError("CPU affinity inspection is unsupported on this platform")
+
+
+def _prime_client_worker(profile: dict) -> list[int]:
+    """Start each pool process with one device's CPU affinity and thread cap."""
+    _set_worker_affinity(profile["logical_cpu_ids"])
+    torch.set_num_threads(int(profile["torch_threads"]))
+    return _current_cpu_affinity()
+
+
+def _parallel_client_train(task: dict) -> dict:
+    """Train one local client model inside an affinity-limited worker process."""
+    profile = task["device_profile"]
+    _set_worker_affinity(profile["logical_cpu_ids"])
+    torch.set_num_threads(int(profile["torch_threads"]))
+    _seed_everything(int(task["seed"]))
+    started = time.perf_counter()
+    spec = task.get("spec", _CLIENT_WORKER_SPEC)
+    architecture = task["architecture"]
+    variant = task["variant"]
+    classifier_scale = float(task.get("classifier_scale", 1.0))
+    classifier_bias_scale = float(task.get("classifier_bias_scale", 1.0))
+    replica_weight_scale = float(task.get("replica_weight_scale", 1.0))
+    if variant in {"elastic", "elastic_plain"}:
+        local_model = build_fixed_subnet(
+            variant,
+            _CLIENT_WORKER_BUNDLE.input_dim,
+            spec.num_classes,
+            architecture.depth,
+            architecture.width,
+            offset=architecture.offset,
+            layer_offsets=architecture.layer_offsets or None,
+        )
+        load_subnet_state(local_model, task["global_state"])
+        if classifier_scale != 1.0:
+            with torch.no_grad():
+                local_model.classifier.weight.mul_(classifier_scale)
+        if classifier_bias_scale != 1.0:
+            with torch.no_grad():
+                local_model.classifier.bias.mul_(classifier_bias_scale)
+        if replica_weight_scale != 1.0:
+            with torch.no_grad():
+                for layer in local_model.layers[1:]:
+                    layer.weight.mul_(replica_weight_scale)
+    else:
+        local_model = build_model(
+            variant,
+            _CLIENT_WORKER_BUNDLE.input_dim,
+            spec.num_classes,
+            spec.max_depth,
+            spec.hidden_dim,
+        )
+        load_numpy_state(local_model, task["global_state"])
+    update, loss, new_control, control_delta = _train_client(
+        local_model,
+        make_client_loader(
+            _CLIENT_WORKER_BUNDLE,
+            task["indices"],
+            spec.batch_size,
+        ),
+        architecture,
+        spec,
+        global_state=task["global_state"],
+        server_control=task["server_control"],
+        client_control=task["client_control"],
+        drift_correction=task["drift_correction"],
+        class_weights=task["class_weights"],
+        poison_mode=task["poison_mode"],
+        num_classes=spec.num_classes,
+        proximal_mu=task["proximal_mu"],
+        ordered_dropout=task["ordered_dropout"],
+        ordered_widths=task["ordered_widths"],
+        optimizer_name=task["optimizer_name"],
+    )
+    if classifier_scale != 1.0 and "classifier.weight" in update:
+        update["classifier.weight"] = update["classifier.weight"] / classifier_scale
+    if classifier_bias_scale != 1.0 and "classifier.bias" in update:
+        update["classifier.bias"] = update["classifier.bias"] / classifier_bias_scale
+    if replica_weight_scale != 1.0:
+        for key in list(update):
+            if key.startswith("layers.") and key.endswith(".weight") and int(key.split(".")[1]) > 0:
+                update[key] = update[key] / replica_weight_scale
+    parameter_count = (
+        subnet_parameters(
+            _CLIENT_WORKER_BUNDLE.input_dim,
+            spec.num_classes,
+            architecture.depth,
+            architecture.width,
+        )
+        if variant in {"elastic", "elastic_plain"}
+        else sum(parameter.numel() for parameter in local_model.parameters())
+    )
+    return {
+        "client_id": int(task["client_id"]),
+        "update": update,
+        "loss": loss,
+        "new_control": new_control,
+        "control_delta": control_delta,
+        "parameter_count": int(parameter_count),
+        "training_seconds": float(time.perf_counter() - started),
+    }
+
+
 @dataclass(frozen=True)
 class ClientArchitecture:
     depth: int
@@ -42,6 +209,15 @@ class ClientArchitecture:
     # FedRolex-style rolling extraction uses a contiguous channel window.
     # Prefix methods keep offset=0, preserving the original contract.
     offset: int = 0
+    # Optional independent channel windows for each hidden layer. This is used
+    # by the residual-free layer-cover experiment, where adjacent layers may
+    # select different global channel blocks.
+    layer_offsets: tuple[int, ...] = ()
+
+    def offset_for_layer(self, layer_index: int) -> int:
+        if self.layer_offsets and layer_index < len(self.layer_offsets):
+            return int(self.layer_offsets[layer_index])
+        return int(self.offset)
 
 
 def _seed_everything(seed: int) -> None:
@@ -55,37 +231,189 @@ def client_architecture_for_round(
     client_id: int,
     round_id: int,
     policy: str = "elastic",
+    tier_assignments: Optional[list[int]] = None,
+    rotate_tiers: bool = False,
 ) -> ClientArchitecture:
-    """Return a reproducible capacity assignment for one client and round."""
+    """Return a client's assigned subnet, optionally changing tiers by round.
+
+    Hardware capacity is fixed by default. ``rotate_tiers`` exists only for a
+    separately reported dynamic-capacity ablation; rolling channel offsets
+    remain available with fixed client capacities under the ``fedrolex``
+    policy.
+    """
     if policy == "fedavg":
         return ClientArchitecture(spec.max_depth, spec.hidden_dim, 0)
 
-    widths = tuple(spec.widths)
-    candidates = [
-        ClientArchitecture(1, widths[0]),
-        ClientArchitecture(max(1, spec.max_depth // 2), widths[min(1, len(widths) - 1)]),
-        ClientArchitecture(spec.max_depth, widths[-1]),
-    ]
-    # Add intermediate candidates when the dataset has a wider search space.
-    if len(widths) > 2:
-        candidates.insert(2, ClientArchitecture(spec.max_depth, widths[-2]))
-    if policy == "static":
-        return candidates[client_id % len(candidates)]
-    if policy in {"elastic", "elastic_scaffold"}:
-        # Rotation is the key difference from a permanently nested prefix:
-        # upper layers and wider channels receive regular training coverage.
-        return candidates[(client_id + round_id) % len(candidates)]
-    if policy == "fedrolex":
-        # FedRolex rolls a contiguous submodel over the global channels.  A
-        # prefix is used when the tier fills the model; otherwise the window
-        # advances deterministically and covers the full supernet over time.
-        architecture = candidates[(client_id + round_id) % len(candidates)]
-        max_offset = max(0, spec.hidden_dim - architecture.width)
-        offset = 0 if max_offset == 0 else (round_id * architecture.width + client_id) % (max_offset + 1)
-        return ClientArchitecture(architecture.depth, architecture.width, offset)
-    raise ValueError(
-        "policy must be 'fedavg', 'static', 'elastic', 'elastic_scaffold', or 'fedrolex'"
+    candidates = _capacity_candidates(spec)
+    assignment = (
+        tier_assignments[client_id]
+        if tier_assignments is not None
+        else client_id % len(candidates)
     )
+    tier_index = (assignment + round_id) % len(candidates) if rotate_tiers else assignment
+    architecture = candidates[tier_index]
+    if policy == "static":
+        return architecture
+    if policy in {"elastic", "elastic_scaffold"}:
+        return architecture
+    if policy == "fedrolex":
+        # Keep a client's tier fixed while rolling its contiguous channel
+        # window through every valid start position. A unit stride gives an
+        # exact cycle of max_offset + 1 positions; a width-sized modular step
+        # can have a shorter cycle when gcd(width, max_offset + 1) > 1.
+        max_offset = max(0, spec.hidden_dim - architecture.width)
+        offset = 0 if max_offset == 0 else (round_id + client_id) % (max_offset + 1)
+        return ClientArchitecture(architecture.depth, architecture.width, offset)
+    if policy == "layercover":
+        # A width-w window needs K=ceil(H/w) starts to cover all channels.
+        # Choose those starts evenly over [0, H-w], so adjacent windows overlap
+        # when H is not divisible by w. For phase p=x+K*y, assign hidden layer
+        # l to block (x+l*y) mod K. Each adjacent layer pair then visits every
+        # ordered block pair exactly once over K^2 participating rounds. This
+        # breaks the same-offset diagonal-only coverage of dense matrices.
+        hidden_dim = int(spec.hidden_dim)
+        width = int(architecture.width)
+        blocks = max(1, int(math.ceil(hidden_dim / width)))
+        phase = (int(round_id) + int(client_id) * blocks) % (blocks * blocks)
+        x_block = phase % blocks
+        y_block = phase // blocks
+        if blocks == 1:
+            starts = [0]
+        else:
+            max_offset = hidden_dim - width
+            starts = [
+                int(round(index * max_offset / (blocks - 1)))
+                for index in range(blocks)
+            ]
+        layer_offsets = tuple(
+            starts[(x_block + layer_index * y_block) % blocks]
+            for layer_index in range(architecture.depth)
+        )
+        return ClientArchitecture(
+            architecture.depth,
+            architecture.width,
+            layer_offsets[0] if layer_offsets else 0,
+            layer_offsets,
+        )
+    raise ValueError(
+        "policy must be 'fedavg', 'static', 'elastic', 'elastic_scaffold', "
+        "'fedrolex', or 'layercover'"
+    )
+
+
+def _capacity_candidates(spec: DatasetSpec) -> list[ClientArchitecture]:
+    """Return three client tiers capped below the full supernet width."""
+    return [
+        ClientArchitecture(1, spec.widths[0]),
+        ClientArchitecture(
+            max(1, spec.max_depth // 2),
+            spec.widths[min(1, len(spec.widths) - 1)],
+        ),
+        ClientArchitecture(
+            spec.max_depth,
+            spec.widths[-2] if len(spec.widths) > 1 else spec.widths[-1],
+        ),
+    ]
+
+
+def _seeded_tier_assignments(spec: DatasetSpec, clients: int, seed: int) -> list[int]:
+    """Shuffle a balanced tier profile once; reuse it across paired methods."""
+    tier_count = len(_capacity_candidates(spec))
+    assignments = np.arange(clients, dtype=np.int64) % tier_count
+    np.random.default_rng(seed + 73_021).shuffle(assignments)
+    return [int(item) for item in assignments]
+
+
+def select_models_for_capacities(
+    scores: list[dict],
+    spec: DatasetSpec,
+    tier_assignments: list[int],
+    metric: str,
+    tolerance: float = 0.002,
+) -> dict:
+    """Choose a validation-selected subnet separately for each client tier."""
+    candidates = _capacity_candidates(spec)
+    selected_rows = []
+    for tier_index in sorted(set(tier_assignments)):
+        capacity = candidates[tier_index]
+        feasible = [
+            item for item in scores
+            if item["depth"] <= capacity.depth and item["width"] <= capacity.width
+        ]
+        selected = select_best_candidate(feasible, tolerance=tolerance, metric=metric)
+        selected_rows.append(
+            {
+                "capacity_tier": int(tier_index),
+                "capacity_depth": capacity.depth,
+                "capacity_width": capacity.width,
+                "client_count": tier_assignments.count(tier_index),
+                **selected,
+            }
+        )
+    total_clients = max(len(tier_assignments), 1)
+
+    def weighted_mean(field: str) -> Optional[float]:
+        values = [item[field] for item in selected_rows if item.get(field) is not None]
+        if not values:
+            return None
+        return float(
+            sum(float(item[field]) * item["client_count"] for item in selected_rows if item.get(field) is not None)
+            / sum(item["client_count"] for item in selected_rows if item.get(field) is not None)
+        )
+
+    modal = max(selected_rows, key=lambda item: item["client_count"])
+    return {
+        "selected_models_by_capacity": selected_rows,
+        "selected_depth": modal["depth"],
+        "selected_width": modal["width"],
+        "selected_val_accuracy": weighted_mean("val_accuracy"),
+        "selected_val_macro_f1": weighted_mean("val_macro_f1"),
+        "selected_test_accuracy": weighted_mean("test_accuracy"),
+        "selected_test_macro_f1": weighted_mean("test_macro_f1"),
+        "selected_deployed_parameters": weighted_mean("parameters"),
+        "selected_deployed_flops": weighted_mean("flops"),
+        "client_capacity_profiles": [
+            {
+                "client_id": client_id,
+                "capacity_tier": int(tier_index),
+                "depth": candidates[tier_index].depth,
+                "width": candidates[tier_index].width,
+            }
+            for client_id, tier_index in enumerate(tier_assignments)
+        ],
+    }
+
+
+def _parameter_coverage(history: list[dict], global_state: dict[str, np.ndarray]) -> dict:
+    """Summarize how often client subnet updates touched supernet coordinates."""
+    visits = {
+        key: np.zeros(np.asarray(value).shape, dtype=np.uint32)
+        for key, value in global_state.items()
+    }
+    for round_record in history:
+        for item in round_record.get("active_architectures", []):
+            architecture = ClientArchitecture(
+                int(item["depth"]),
+                int(item["width"]),
+                int(item.get("offset", 0)),
+                tuple(int(value) for value in item.get("layer_offsets", ())),
+            )
+            for key, base in global_state.items():
+                slices = _state_slices(key, np.asarray(base).shape, architecture)
+                if slices is not None:
+                    visits[key][slices] += 1
+    total = sum(array.size for array in visits.values())
+    covered = sum(int(np.count_nonzero(array)) for array in visits.values())
+    all_visits = np.concatenate([array.ravel() for array in visits.values()])
+    return {
+        "parameter_coordinate_coverage": float(covered / max(total, 1)),
+        "parameter_coordinate_updates_mean": float(all_visits.mean()) if total else 0.0,
+        "parameter_coordinate_updates_min": int(all_visits.min()) if total else 0,
+        "parameter_coordinate_updates_max": int(all_visits.max()) if total else 0,
+        "parameter_coordinate_updates_cv": (
+            float(all_visits.std() / all_visits.mean()) if all_visits.mean() > 0 else None
+        ),
+    }
 
 
 def _state_slices(
@@ -94,32 +422,39 @@ def _state_slices(
     architecture: ClientArchitecture,
 ):
     """Return the global tensor coordinates touched by a client subnet."""
-    depth, width, offset = architecture.depth, architecture.width, architecture.offset
+    depth, width = architecture.depth, architecture.width
     if key.startswith("layers.") or key.startswith("norms."):
         parts = key.split(".")
         layer_index = int(parts[1])
         if layer_index >= depth:
             return None
         if key.startswith("layers.") and key.endswith("weight") and layer_index > 0:
+            out_offset = architecture.offset_for_layer(layer_index)
+            in_offset = architecture.offset_for_layer(layer_index - 1)
             return (
-                slice(offset, offset + width),
-                slice(offset, offset + width),
+                slice(out_offset, out_offset + width),
+                slice(in_offset, in_offset + width),
                 *tuple(slice(None) for _ in base_shape[2:]),
             )
         if key.startswith("layers.") and key.endswith("weight"):
+            out_offset = architecture.offset_for_layer(layer_index)
             return (
-                slice(offset, offset + width),
+                slice(out_offset, out_offset + width),
                 slice(0, base_shape[1]),
                 *tuple(slice(None) for _ in base_shape[2:]),
             )
         if key.startswith("layers.") and key.endswith("bias"):
+            offset = architecture.offset_for_layer(layer_index)
             return (slice(offset, offset + width),)
         if key.startswith("norms.") and len(base_shape) == 1:
+            offset = architecture.offset_for_layer(layer_index)
             return (slice(offset, offset + width),)
         if len(base_shape) == 1:
+            offset = architecture.offset_for_layer(layer_index)
             return (slice(offset, offset + width),)
         return tuple(slice(0, size) for size in base_shape)
     if key == "classifier.weight":
+        offset = architecture.offset_for_layer(depth - 1)
         return (slice(0, base_shape[0]), slice(offset, offset + width))
     if key == "classifier.bias":
         return tuple(slice(0, size) for size in base_shape)
@@ -529,19 +864,17 @@ def _train_client(
     proximal_mu: float = 0.0,
     ordered_dropout: bool = False,
     ordered_widths: Optional[tuple[int, ...]] = None,
-    drift_lr_multiplier: float = 5.0,
+    optimizer_name: str = "adam",
 ):
     snapshot = [param.detach().clone() for param in model.parameters()]
-    # SCAFFOLD's control-variate update is derived for additive SGD steps.
-    # Keep the original Adam optimizer for the baseline/elastic strategies,
-    # but use a conservative SGD step when the correction is enabled so the
-    # client-control estimate remains numerically meaningful.
-    local_lr = spec.learning_rate * (
-        float(drift_lr_multiplier) if drift_correction else 1.0
-    )
+    if optimizer_name not in {"adam", "sgd"}:
+        raise ValueError("optimizer_name must be 'adam' or 'sgd'")
+    if drift_correction and optimizer_name != "sgd":
+        raise ValueError("SCAFFOLD correction requires optimizer_name='sgd'")
+    local_lr = spec.learning_rate
     optimizer = (
         torch.optim.SGD(model.parameters(), lr=local_lr, momentum=0.9)
-        if drift_correction
+        if optimizer_name == "sgd"
         else torch.optim.Adam(model.parameters(), lr=local_lr)
     )
     model.train()
@@ -732,6 +1065,7 @@ def run_federated_experiment(
     seed: int = 42,
     num_clients: Optional[int] = None,
     strategy: str = "elastic",
+    optimizer_name: Optional[str] = None,
     drift_correction: Optional[bool] = None,
     dropout_rate: float = 0.0,
     straggler_rate: float = 0.0,
@@ -745,6 +1079,17 @@ def run_federated_experiment(
     attack_scale: float = 5.0,
     defense: str = "none",
     trim_ratio: float = 0.1,
+    client_cpu_profiles: Optional[list[dict]] = None,
+    fixed_tier_assignments: Optional[list[int]] = None,
+    coordinator_cpu_ids: Optional[list[int]] = None,
+    client_executor: Optional[ProcessPoolExecutor] = None,
+    initial_global_state: Optional[dict[str, np.ndarray]] = None,
+    return_global_state: bool = False,
+    include_final_test: bool = True,
+    classifier_scale: float = 1.0,
+    classifier_bias_scale: float = 1.0,
+    replica_weight_scale: float = 1.0,
+    block_window_width: int = 0,
 ) -> dict:
     """Run a reproducible FL experiment and return paper-ready metrics.
 
@@ -773,6 +1118,13 @@ def run_federated_experiment(
         and FedProx regularization. SCAFFOLD remains a separate reference
         because its correction is not stable with this rolling fixed-subnet
         backbone.
+    ``cc_efl_fjord``
+        Experimental extension adding FjORD-style ordered-width local
+        distillation to the CC-EFL fixed-capacity rolling-window protocol.
+    ``cc_efl_warmup_fjord``
+        Exploratory variant that trains prefix windows for an initial 20% of
+        rounds, then combines systematic rolling windows with FjORD-style
+        local distillation.
 
     ``dropout_rate`` and ``straggler_rate`` simulate clients missing a round
     deadline.  They affect only participation, not the local data itself, so
@@ -783,6 +1135,10 @@ def run_federated_experiment(
     allowed_strategies = {
         "fedavg", "fedprox", "static", "heterofl", "fjord", "fedrolex",
         "elastic", "maxnet", "scaffold", "elastic_scaffold", "cc_efl",
+        "cc_efl_no_prox", "cc_efl_uniform", "cc_efl_random_window",
+        "cc_efl_dynamic", "cc_efl_fjord", "cc_efl_warmup_fjord",
+        "cc_efl_layercover",
+        "fedrolex_block",
     }
     if strategy not in allowed_strategies:
         raise ValueError("unknown strategy")
@@ -817,13 +1173,59 @@ def run_federated_experiment(
     _seed_everything(seed)
     started_at = time.perf_counter()
     clients = num_clients or spec.clients
+    if client_cpu_profiles is not None:
+        if len(client_cpu_profiles) != clients:
+            raise ValueError("client_cpu_profiles must contain one profile per client")
+        used_cpu_ids = []
+        for profile in client_cpu_profiles:
+            cpu_ids = [int(item) for item in profile.get("logical_cpu_ids", [])]
+            threads = int(profile.get("torch_threads", 0))
+            if not cpu_ids or threads < 1 or threads > len(cpu_ids):
+                raise ValueError("each CPU profile needs valid CPU IDs and thread count")
+            used_cpu_ids.extend(cpu_ids)
+        if len(set(used_cpu_ids)) != len(used_cpu_ids):
+            raise ValueError("virtual client CPU affinity masks must not overlap")
+        if coordinator_cpu_ids is not None and set(used_cpu_ids) & set(coordinator_cpu_ids):
+            raise ValueError("coordinator and virtual client CPU masks must not overlap")
+    elif client_executor is not None:
+        raise ValueError("client_executor requires client_cpu_profiles")
     attacker_start = max(0, clients - int(math.ceil(clients * attack_fraction)))
     attacker_ids = set(range(attacker_start, clients))
     partitions = make_client_partitions(
         bundle.y_train, clients, alpha=spec.dirichlet_alpha, seed=seed
     )
+    tier_assignments = (
+        [int(item) for item in fixed_tier_assignments]
+        if fixed_tier_assignments is not None
+        else _seeded_tier_assignments(spec, clients, seed)
+    )
+    tier_count = len(_capacity_candidates(spec))
+    if len(tier_assignments) != clients or any(
+        item < 0 or item >= tier_count for item in tier_assignments
+    ):
+        raise ValueError("fixed_tier_assignments must map each client to a valid capacity tier")
+    selection_tier_assignments = (
+        [len(_capacity_candidates(spec)) - 1] * clients
+        if strategy == "cc_efl_dynamic"
+        else tier_assignments
+    )
+    window_rng = np.random.default_rng(seed + 91_237)
     model = build_model(variant, bundle.input_dim, spec.num_classes, spec.max_depth, spec.hidden_dim)
     global_state = state_to_numpy(model)
+    if initial_global_state is not None:
+        candidate_state = {
+            key: np.asarray(value).copy()
+            for key, value in initial_global_state.items()
+        }
+        if set(candidate_state) != set(global_state) or any(
+            candidate_state[key].shape != global_state[key].shape
+            for key in global_state
+        ):
+            raise ValueError("initial_global_state does not match the requested model")
+        global_state = candidate_state
+        load_numpy_state(model, global_state)
+    if classifier_scale <= 0 or classifier_bias_scale <= 0 or replica_weight_scale <= 0:
+        raise ValueError("replica scales must be positive")
     server_control = _zero_float_state(global_state)
     client_controls: dict[int, dict[str, np.ndarray]] = {}
     history = []
@@ -832,22 +1234,63 @@ def run_federated_experiment(
         strategy in {"scaffold", "elastic_scaffold"}
         if drift_correction is None else bool(drift_correction)
     )
+    optimizer_name = optimizer_name or ("sgd" if use_drift_correction else "adam")
+    if optimizer_name not in {"adam", "sgd"}:
+        raise ValueError("optimizer_name must be 'adam' or 'sgd'")
+    if use_drift_correction and optimizer_name != "sgd":
+        raise ValueError("SCAFFOLD strategies require optimizer_name='sgd'")
     if strategy in {"fedavg", "fedprox", "scaffold"}:
         policy = "fedavg"
     elif strategy in {"static", "heterofl", "fjord"}:
         policy = "static"
-    elif strategy in {"fedrolex", "cc_efl"}:
+    elif strategy in {
+        "fedrolex", "cc_efl", "cc_efl_no_prox", "cc_efl_uniform",
+        "cc_efl_random_window", "cc_efl_dynamic", "cc_efl_fjord",
+        "cc_efl_warmup_fjord",
+    }:
         policy = "fedrolex"
+    elif strategy == "fedrolex_block":
+        if block_window_width < 1 or spec.hidden_dim % block_window_width:
+            raise ValueError(
+                "fedrolex_block requires a positive block_window_width that divides hidden_dim"
+            )
+        policy = "fedrolex"
+    elif strategy == "cc_efl_layercover":
+        policy = "layercover"
     else:
         policy = "elastic"
-    proximal_mu = spec.fedprox_mu if strategy in {"fedprox", "cc_efl"} else 0.0
-    ordered_dropout = strategy == "fjord"
+    proximal_strategies = {
+        "fedprox", "cc_efl", "cc_efl_uniform", "cc_efl_random_window",
+        "cc_efl_dynamic", "cc_efl_fjord", "cc_efl_warmup_fjord",
+        "cc_efl_layercover",
+    }
+    proximal_mu = spec.fedprox_mu if strategy in proximal_strategies else 0.0
+    ordered_dropout = strategy in {"fjord", "cc_efl_fjord", "cc_efl_warmup_fjord"}
+    prefix_warmup_rounds = (
+        max(1, math.ceil(rounds * CC_EFL_PREFIX_WARMUP_FRACTION))
+        if strategy == "cc_efl_warmup_fjord" else 0
+    )
     secure_keys = _float_state_keys(global_state)
     class_weights = None
     if spec.class_weighting == "balanced":
         class_counts = np.bincount(bundle.y_train, minlength=spec.num_classes).astype(np.float32)
         class_weights = len(bundle.y_train) / np.maximum(class_counts * spec.num_classes, 1.0)
         class_weights = torch.from_numpy(class_weights.astype(np.float32))
+
+    owns_client_executor = False
+    original_cpu_affinity = None
+    if client_cpu_profiles is not None and client_executor is None:
+        client_executor = ProcessPoolExecutor(
+            max_workers=clients,
+            mp_context=multiprocessing.get_context("spawn"),
+            initializer=_initialize_client_worker,
+            initargs=(bundle, spec),
+        )
+        owns_client_executor = True
+        if coordinator_cpu_ids is not None:
+            list(client_executor.map(_prime_client_worker, client_cpu_profiles))
+            original_cpu_affinity = _current_cpu_affinity()
+            _set_worker_affinity(coordinator_cpu_ids)
 
     for round_id in range(rounds):
         updates = []
@@ -862,8 +1305,37 @@ def run_federated_experiment(
         local_parameter_counts = []
         active_client_ids = []
         clipped_norms = []
+        client_training_seconds = []
+        parallel_tasks = []
+        parallel_metadata = []
         for client_id, indices in enumerate(partitions):
-            architecture = client_architecture_for_round(spec, client_id, round_id, policy=policy)
+            architecture = client_architecture_for_round(
+                spec,
+                client_id,
+                round_id,
+                policy=policy,
+                tier_assignments=tier_assignments,
+                rotate_tiers=strategy == "cc_efl_dynamic",
+            )
+            if strategy == "fedrolex_block":
+                num_blocks = spec.hidden_dim // block_window_width
+                block = (round_id * clients + client_id) % num_blocks
+                architecture = ClientArchitecture(
+                    architecture.depth,
+                    architecture.width,
+                    block * block_window_width,
+                )
+            if strategy == "cc_efl_random_window":
+                max_offset = max(0, spec.hidden_dim - architecture.width)
+                architecture = ClientArchitecture(
+                    architecture.depth,
+                    architecture.width,
+                    int(window_rng.integers(max_offset + 1)) if max_offset else 0,
+                )
+            if strategy == "cc_efl_warmup_fjord" and round_id < prefix_warmup_rounds:
+                architecture = ClientArchitecture(
+                    architecture.depth, architecture.width, offset=0
+                )
             if client_id != 0 and availability_rng.random() < dropout_rate:
                 dropped_clients.append(client_id)
                 continue
@@ -871,7 +1343,43 @@ def run_federated_experiment(
                 stragglers.append(client_id)
                 continue
 
-            if variant == "elastic":
+            old_control = client_controls.get(client_id, {})
+            poison_mode = (
+                attack_type if client_id in attacker_ids and attack_type in {"label_flip", "backdoor"}
+                else "none"
+            )
+            if client_executor is not None:
+                parallel_tasks.append(
+                    {
+                        "client_id": client_id,
+                        "indices": indices,
+                        "architecture": architecture,
+                        "variant": variant,
+                        "global_state": global_state,
+                        "server_control": server_control if use_drift_correction else None,
+                        "client_control": old_control if use_drift_correction else None,
+                        "drift_correction": use_drift_correction,
+                        "class_weights": class_weights,
+                        "poison_mode": poison_mode,
+                        "proximal_mu": proximal_mu,
+                        "ordered_dropout": ordered_dropout,
+                        "ordered_widths": tuple(spec.widths),
+                        "optimizer_name": optimizer_name,
+                        "seed": seed + 1_000_003 * (round_id + 1) + client_id,
+                        "device_profile": client_cpu_profiles[client_id],
+                        "spec": spec,
+                        "classifier_scale": classifier_scale,
+                        "classifier_bias_scale": classifier_bias_scale,
+                        "replica_weight_scale": replica_weight_scale,
+                    }
+                )
+                parallel_metadata.append(
+                    (client_id, indices, architecture, poison_mode)
+                )
+                continue
+
+            local_started_at = time.perf_counter()
+            if variant in {"elastic", "elastic_plain"}:
                 # This is the deployable path: the client allocates exactly
                 # the requested subnet, never the full supernet.
                 local_model = build_fixed_subnet(
@@ -881,8 +1389,19 @@ def run_federated_experiment(
                     architecture.depth,
                     architecture.width,
                     offset=architecture.offset,
+                    layer_offsets=architecture.layer_offsets or None,
                 )
                 load_subnet_state(local_model, global_state)
+                if classifier_scale != 1.0:
+                    with torch.no_grad():
+                        local_model.classifier.weight.mul_(classifier_scale)
+                if classifier_bias_scale != 1.0:
+                    with torch.no_grad():
+                        local_model.classifier.bias.mul_(classifier_bias_scale)
+                if replica_weight_scale != 1.0:
+                    with torch.no_grad():
+                        for layer in local_model.layers[1:]:
+                            layer.weight.mul_(replica_weight_scale)
             else:
                 local_model = build_model(
                     variant, bundle.input_dim, spec.num_classes, spec.max_depth, spec.hidden_dim
@@ -909,8 +1428,16 @@ def run_federated_experiment(
                 proximal_mu=proximal_mu,
                 ordered_dropout=ordered_dropout,
                 ordered_widths=tuple(spec.widths),
-                drift_lr_multiplier=1.0 if strategy == "cc_efl" else 5.0,
+                optimizer_name=optimizer_name,
             )
+            if classifier_scale != 1.0 and "classifier.weight" in update:
+                update["classifier.weight"] = update["classifier.weight"] / classifier_scale
+            if classifier_bias_scale != 1.0 and "classifier.bias" in update:
+                update["classifier.bias"] = update["classifier.bias"] / classifier_bias_scale
+            if replica_weight_scale != 1.0:
+                for key in list(update):
+                    if key.startswith("layers.") and key.endswith(".weight") and int(key.split(".")[1]) > 0:
+                        update[key] = update[key] / replica_weight_scale
             if dp_noise_multiplier > 0:
                 update, clipped_norm = _sanitize_update(
                     update,
@@ -934,25 +1461,96 @@ def run_federated_experiment(
             client_controls[client_id] = new_control
             upload_bytes.append(sum(np.asarray(value).nbytes for value in update.values()))
             download_bytes.append(_state_payload_bytes(global_state, architecture))
-            if variant == "elastic":
+            if variant in {"elastic", "elastic_plain"}:
                 local_parameter_counts.append(
                     subnet_parameters(bundle.input_dim, spec.num_classes, architecture.depth, architecture.width)
                 )
             else:
                 local_parameter_counts.append(sum(parameter.numel() for parameter in local_model.parameters()))
+            client_training_seconds.append(
+                {"client_id": client_id, "seconds": time.perf_counter() - local_started_at}
+            )
+
+        if client_executor is not None:
+            worker_results = client_executor.map(_parallel_client_train, parallel_tasks)
+            for result, metadata in zip(worker_results, parallel_metadata):
+                client_id, indices, architecture, _poison_mode = metadata
+                update = result["update"]
+                if dp_noise_multiplier > 0:
+                    update, clipped_norm = _sanitize_update(
+                        update,
+                        global_state,
+                        clip_norm=dp_clip_norm,
+                        noise_multiplier=dp_noise_multiplier,
+                        rng=np.random.default_rng(seed + 100_003 * (round_id + 1) + client_id),
+                        architecture=architecture,
+                    )
+                    clipped_norms.append(clipped_norm)
+                if attack_type == "sign_flip" and client_id in attacker_ids:
+                    update = _poison_update(
+                        update, global_state, scale=attack_scale, architecture=architecture
+                    )
+                updates.append(update)
+                counts.append(len(indices))
+                architectures.append(architecture)
+                losses.append(result["loss"])
+                control_deltas.append(result["control_delta"])
+                active_client_ids.append(client_id)
+                client_controls[client_id] = result["new_control"]
+                upload_bytes.append(sum(np.asarray(value).nbytes for value in update.values()))
+                download_bytes.append(_state_payload_bytes(global_state, architecture))
+                local_parameter_counts.append(result["parameter_count"])
+                client_training_seconds.append(
+                    {"client_id": client_id, "seconds": result["training_seconds"]}
+                )
 
         # Avoid an empty round in an extreme dropout simulation.  This keeps
         # the experiment useful while recording that the deadline policy was
         # too aggressive for that round.
         if not updates:
             client_id = 0
-            architecture = client_architecture_for_round(spec, client_id, round_id, policy=policy)
-            if variant == "elastic":
+            architecture = client_architecture_for_round(
+                spec,
+                client_id,
+                round_id,
+                policy=policy,
+                tier_assignments=tier_assignments,
+                rotate_tiers=strategy == "cc_efl_dynamic",
+            )
+            if strategy == "fedrolex_block":
+                num_blocks = spec.hidden_dim // block_window_width
+                block = (round_id * clients + client_id) % num_blocks
+                architecture = ClientArchitecture(
+                    architecture.depth,
+                    architecture.width,
+                    block * block_window_width,
+                )
+            if strategy == "cc_efl_random_window":
+                max_offset = max(0, spec.hidden_dim - architecture.width)
+                architecture = ClientArchitecture(
+                    architecture.depth,
+                    architecture.width,
+                    int(window_rng.integers(max_offset + 1)) if max_offset else 0,
+                )
+            if variant in {"elastic", "elastic_plain"}:
                 local_model = build_fixed_subnet(
                     variant, bundle.input_dim, spec.num_classes,
-                    architecture.depth, architecture.width, offset=architecture.offset
+                    architecture.depth,
+                    architecture.width,
+                    offset=architecture.offset,
+                    layer_offsets=architecture.layer_offsets or None,
                 )
                 load_subnet_state(local_model, global_state)
+                if classifier_scale != 1.0:
+                    with torch.no_grad():
+                        local_model.classifier.weight.mul_(classifier_scale)
+                if classifier_bias_scale != 1.0:
+                    with torch.no_grad():
+                        local_model.classifier.bias.mul_(classifier_bias_scale)
+                if replica_weight_scale != 1.0:
+                    with torch.no_grad():
+                        for layer in local_model.layers[1:]:
+                            layer.weight.mul_(replica_weight_scale)
             else:
                 local_model = build_model(
                     variant, bundle.input_dim, spec.num_classes, spec.max_depth, spec.hidden_dim
@@ -976,8 +1574,16 @@ def run_federated_experiment(
                 proximal_mu=proximal_mu,
                 ordered_dropout=ordered_dropout,
                 ordered_widths=tuple(spec.widths),
-                drift_lr_multiplier=1.0 if strategy == "cc_efl" else 5.0,
+                optimizer_name=optimizer_name,
             )
+            if classifier_scale != 1.0 and "classifier.weight" in update:
+                update["classifier.weight"] = update["classifier.weight"] / classifier_scale
+            if classifier_bias_scale != 1.0 and "classifier.bias" in update:
+                update["classifier.bias"] = update["classifier.bias"] / classifier_bias_scale
+            if replica_weight_scale != 1.0:
+                for key in list(update):
+                    if key.startswith("layers.") and key.endswith(".weight") and int(key.split(".")[1]) > 0:
+                        update[key] = update[key] / replica_weight_scale
             if dp_noise_multiplier > 0:
                 update, clipped_norm = _sanitize_update(
                     update,
@@ -1003,7 +1609,7 @@ def run_federated_experiment(
             download_bytes.append(_state_payload_bytes(global_state, architecture))
             local_parameter_counts.append(
                 subnet_parameters(bundle.input_dim, spec.num_classes, architecture.depth, architecture.width)
-                if variant == "elastic"
+                if variant in {"elastic", "elastic_plain"}
                 else sum(parameter.numel() for parameter in local_model.parameters())
             )
 
@@ -1031,7 +1637,12 @@ def run_federated_experiment(
         # unweighted so they remain clean baselines.
         beta = 0.2 + 0.7 * 0.5 * (1.0 + math.cos(math.pi * round_id / max(rounds - 1, 1)))
         max_capacity = max(item.depth * item.width for item in architectures)
-        if strategy in {"elastic", "maxnet", "elastic_scaffold", "cc_efl"}:
+        priority_strategies = {
+            "elastic", "maxnet", "elastic_scaffold", "cc_efl",
+            "cc_efl_no_prox", "cc_efl_random_window", "cc_efl_dynamic",
+            "cc_efl_fjord", "cc_efl_warmup_fjord",
+        }
+        if strategy in priority_strategies:
             priorities = [
                 beta if item.depth * item.width == max_capacity else (1.0 - beta)
                 for item in architectures
@@ -1087,27 +1698,10 @@ def run_federated_experiment(
         load_numpy_state(model, global_state)
 
         candidate_scores = evaluate_candidates(model, bundle, spec, include_test=False)
-        best = select_best_candidate(candidate_scores, metric=spec.selection_metric)
-        selected_test = _evaluate(
-            model,
-            bundle.X_test,
-            bundle.y_test,
-            ClientArchitecture(best["depth"], best["width"]),
-            spec.batch_size,
+        best = select_models_for_capacities(
+            candidate_scores, spec, selection_tier_assignments,
+            metric=spec.selection_metric,
         )
-        best = dict(best)
-        best["test_accuracy"] = selected_test["accuracy"]
-        best["test_macro_f1"] = selected_test["macro_f1"]
-        backdoor_asr = None
-        if attack_type == "backdoor":
-            triggered_test = _evaluate(
-                model,
-                _trigger_inputs(bundle.X_test),
-                np.zeros(len(bundle.y_test), dtype=np.int64),
-                ClientArchitecture(best["depth"], best["width"]),
-                spec.batch_size,
-            )
-            backdoor_asr = triggered_test["accuracy"]
         active_flops = [
             subnet_flops(bundle.input_dim, spec.num_classes, item.depth, item.width)
             for item in architectures
@@ -1116,6 +1710,7 @@ def run_federated_experiment(
             {
                 "round": round_id + 1,
                 "mean_client_loss": float(np.mean(losses)) if losses else 0.0,
+                "client_training_seconds": client_training_seconds,
                 "maxnet_beta": float(beta),
                 "strategy": strategy,
                 "drift_correction": use_drift_correction,
@@ -1162,14 +1757,24 @@ def run_federated_experiment(
                 "defense_removed_clients": defense_removed,
                 "mean_active_flops": float(np.mean(active_flops)) if active_flops else 0.0,
                 "mean_client_parameters": float(np.mean(local_parameter_counts)) if local_parameter_counts else 0.0,
-                "selected_depth": best["depth"],
-                "selected_width": best["width"],
-                "selected_val_accuracy": best["val_accuracy"],
-                "selected_test_accuracy": best["test_accuracy"],
-                "selected_test_macro_f1": best["test_macro_f1"],
-                "selected_backdoor_asr": backdoor_asr,
+                "selected_depth": best["selected_depth"],
+                "selected_width": best["selected_width"],
+                "selected_val_accuracy": best["selected_val_accuracy"],
+                "selected_val_macro_f1": best["selected_val_macro_f1"],
+                "selected_models_by_capacity": best["selected_models_by_capacity"],
+                # Test metrics are intentionally absent during training.
+                # They are populated once, after the final validation-only
+                # selection below, to prevent repeated test-set feedback.
+                "selected_test_accuracy": None,
+                "selected_test_macro_f1": None,
+                "selected_backdoor_asr": None,
                 "active_architectures": [
-                    {"depth": item.depth, "width": item.width, "offset": item.offset}
+                    {
+                        "depth": item.depth,
+                        "width": item.width,
+                        "offset": item.offset,
+                        "layer_offsets": list(item.layer_offsets),
+                    }
                     for item in architectures
                 ],
                 "tier_counts": {
@@ -1185,12 +1790,46 @@ def run_federated_experiment(
             }
         )
 
-    # Evaluate every deployable tier once on the untouched test split.  The
-    # test set is never used for per-round selection; this table is reserved
-    # for final reporting and makes the device/accuracy trade-off auditable.
-    tier_scores = evaluate_candidates(model, bundle, spec, include_test=True)
+    if owns_client_executor:
+        client_executor.shutdown(wait=True)
+        if original_cpu_affinity is not None:
+            _set_worker_affinity(original_cpu_affinity)
+
+    # Freeze the final model and choose the deployed tier using validation
+    # data only. Test evaluation begins only after training and selection are
+    # complete. The fixed tier table is a final, pre-defined diagnostic.
+    tier_scores = evaluate_candidates(model, bundle, spec, include_test=include_final_test)
     final = dict(history[-1])
+    final_by_capacity = select_models_for_capacities(
+        tier_scores, spec, selection_tier_assignments,
+        metric=spec.selection_metric,
+    )
+    final.update(final_by_capacity)
+    if attack_type == "backdoor":
+        for selected in final["selected_models_by_capacity"]:
+            triggered_test = _evaluate(
+                model,
+                _trigger_inputs(bundle.X_test),
+                np.zeros(len(bundle.y_test), dtype=np.int64),
+                ClientArchitecture(selected["depth"], selected["width"]),
+                spec.batch_size,
+            )
+            selected["backdoor_asr"] = triggered_test["accuracy"]
+        asr_rows = final["selected_models_by_capacity"]
+        final["selected_backdoor_asr"] = float(
+            sum(row["backdoor_asr"] * row["client_count"] for row in asr_rows)
+            / max(clients, 1)
+        )
     final["tier_scores"] = tier_scores
+    full_model_candidate = max(tier_scores, key=lambda candidate: candidate["parameters"])
+    final["full_model_test_accuracy"] = (
+        float(full_model_candidate["test_accuracy"]) if include_final_test else None
+    )
+    final["full_model_test_macro_f1"] = (
+        float(full_model_candidate["test_macro_f1"]) if include_final_test else None
+    )
+    final["full_model_parameters"] = int(full_model_candidate["parameters"])
+    final["full_model_flops"] = int(full_model_candidate["flops"])
     history[-1] = final
 
     return {
@@ -1200,8 +1839,25 @@ def run_federated_experiment(
         "input_dim": bundle.input_dim,
         "num_classes": spec.num_classes,
         "clients": clients,
+        "client_capacity_tiers": tier_assignments,
+        "client_cpu_profiles": client_cpu_profiles,
+        "capacity_schedule": "rotating" if strategy == "cc_efl_dynamic" else "fixed",
+        "aggregation_priority": (
+            "uniform" if strategy == "cc_efl_uniform" else "cosine-largest-tier"
+        ),
+        "channel_window_policy": (
+            "replica-block-cyclic" if strategy == "fedrolex_block"
+            else
+            "random" if strategy == "cc_efl_random_window"
+            else "prefix-warmup-then-systematic" if strategy == "cc_efl_warmup_fjord"
+            else "orthogonal-layer-block-pairs" if strategy == "cc_efl_layercover"
+            else "systematic-rolling" if strategy.startswith("cc_efl") or strategy == "fedrolex"
+            else "prefix"
+        ),
+        "prefix_warmup_rounds": prefix_warmup_rounds,
         "rounds": rounds,
         "strategy": strategy,
+        "optimizer": optimizer_name,
         "proximal_mu": float(proximal_mu),
         "drift_correction": use_drift_correction,
         "dropout_rate": dropout_rate,
@@ -1225,8 +1881,14 @@ def run_federated_experiment(
         "attack_scale": float(attack_scale),
         "defense": defense,
         "trim_ratio": float(trim_ratio),
+        "classifier_scale": float(classifier_scale),
+        "classifier_bias_scale": float(classifier_bias_scale),
+        "replica_weight_scale": float(replica_weight_scale),
+        "block_window_width": int(block_window_width),
         "history": history,
         "final": final,
         "tier_scores": tier_scores,
+        **_parameter_coverage(history, global_state),
         "wall_clock_seconds": float(time.perf_counter() - started_at),
+        **({"global_model_state": global_state} if return_global_state else {}),
     }

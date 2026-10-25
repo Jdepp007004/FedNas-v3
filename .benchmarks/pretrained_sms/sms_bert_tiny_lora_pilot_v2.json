@@ -1,0 +1,497 @@
+{
+  "dataset": "sms_spam_bert_tiny_lora",
+  "source_url": "https://archive.ics.uci.edu/static/public/228/sms+spam+collection.zip",
+  "source_archive_sha256": "1587ea43e58e82b14ff1f5425c88e17f8496bfcdb67a583dbff9eefaf9963ce3",
+  "encoder": {
+    "model_id": "google/bert_uncased_L-2_H-128_A-2",
+    "revision": "30b0a37ccaaa32f332884b96992754e246e48c5f",
+    "total_parameters": 4385920,
+    "trainable_scope": "rank-window LoRA on final transformer block query/value projections plus 2-class head",
+    "base_encoder_parameters_frozen": true,
+    "max_sequence_length": 64,
+    "lora_rank_tiers": [
+      1,
+      2,
+      3
+    ],
+    "lora_supernet_rank": 4,
+    "lora_modules": [
+      "final attention query",
+      "final attention value"
+    ]
+  },
+  "split_protocol": "grouped stratified 20-fold split: 14 folds train, 3 validation, 3 test; exact duplicate messages kept in one split",
+  "split_sizes": {
+    "train": 3908,
+    "validation": 837,
+    "test": 829,
+    "exact_text_overlap": {
+      "train_validation": 0,
+      "train_test": 0,
+      "validation_test": 0
+    }
+  },
+  "configuration": {
+    "clients": 6,
+    "dirichlet_alpha": 0.3,
+    "rounds": 3,
+    "seeds": [
+      1
+    ],
+    "strategies": [
+      "fedavg",
+      "cc_efl"
+    ],
+    "batch_size": 128,
+    "local_epochs": 1,
+    "optimizer": "Adam",
+    "learning_rate": 0.0002,
+    "proximal_mu": 0.001,
+    "torch_threads": 1,
+    "validation_selection": "for each maximum client rank, select the smallest feasible rank/window within 0.002 macro-F1 of best validation macro-F1"
+  },
+  "source_script_sha256": "720225f148934dc9c97fc07a086fce69cca50c89fd0c7abf1152abdef425a4cd",
+  "split_indices_sha256": "e67666b51f3a7fa4c731e6a58258143755a15b419fbaf491c263837fe69ab0ff",
+  "centralized_results": [
+    {
+      "seed": 1,
+      "trainable_parameters": 2306,
+      "validation": {
+        "accuracy": 0.899641577060932,
+        "macro_f1": 0.8238636363636365
+      },
+      "test": {
+        "accuracy": 0.8998793727382388,
+        "macro_f1": 0.827029866992461
+      },
+      "wall_clock_seconds": 25.78614360000938
+    }
+  ],
+  "centralized_test_macro_f1": {
+    "n": 1,
+    "mean": 0.827029866992461,
+    "std": 0.0,
+    "ci95_low": null,
+    "ci95_high": null
+  },
+  "federated_summary": [
+    {
+      "method": "fedavg",
+      "seeds": 1,
+      "capacity_weighted_test_macro_f1": {
+        "n": 1,
+        "mean": 0.716709061963415,
+        "std": 0.0,
+        "ci95_low": null,
+        "ci95_high": null
+      },
+      "capacity_weighted_test_accuracy": {
+        "n": 1,
+        "mean": 0.8777643747486933,
+        "std": 0.0,
+        "ci95_low": null,
+        "ci95_high": null
+      },
+      "mean_active_trainable_parameters_per_client": 1282.0,
+      "full_rank_trainable_parameters": 2306,
+      "mean_rank_coordinate_coverage": 1.0,
+      "mean_wall_clock_seconds": 42.77409820002504
+    },
+    {
+      "method": "cc_efl",
+      "seeds": 1,
+      "capacity_weighted_test_macro_f1": {
+        "n": 1,
+        "mean": 0.6904632137158524,
+        "std": 0.0,
+        "ci95_low": null,
+        "ci95_high": null
+      },
+      "capacity_weighted_test_accuracy": {
+        "n": 1,
+        "mean": 0.8801769199839163,
+        "std": 0.0,
+        "ci95_low": null,
+        "ci95_high": null
+      },
+      "mean_active_trainable_parameters_per_client": 1282.0,
+      "full_rank_trainable_parameters": 2306,
+      "mean_rank_coordinate_coverage": 1.0,
+      "mean_wall_clock_seconds": 42.36676110001281
+    }
+  ],
+  "paired_inference": [
+    {
+      "reference": "fedavg",
+      "method": "cc_efl",
+      "seeds": [
+        1
+      ],
+      "paired_macro_f1_delta_mean": -0.026245848247562598,
+      "paired_macro_f1_delta_ci95_low": null,
+      "paired_macro_f1_delta_ci95_high": null,
+      "paired_t_test_p_unadjusted": 1.0,
+      "paired_t_test_p_holm": 1.0
+    }
+  ],
+  "results": [
+    {
+      "dataset": "sms_spam_bert_tiny_lora",
+      "method": "fedavg",
+      "seed": 1,
+      "rounds": 3,
+      "clients": 6,
+      "client_capacity_ranks": [
+        1,
+        2,
+        3,
+        1,
+        2,
+        3
+      ],
+      "client_partition_sizes": [
+        54,
+        1753,
+        26,
+        18,
+        343,
+        1714
+      ],
+      "client_partition_sha256": "5c038a311eed6b60e9aa52f17fc7fe3df86d0054d78d9613299034bc50dace41",
+      "selected_deployments_by_capacity": {
+        "1": {
+          "capacity_rank": 1,
+          "selected_rank": 1,
+          "selected_start": 1,
+          "validation_macro_f1": 0.6809042809042809,
+          "best_feasible_validation_macro_f1": 0.6809042809042809
+        },
+        "2": {
+          "capacity_rank": 2,
+          "selected_rank": 1,
+          "selected_start": 1,
+          "validation_macro_f1": 0.6809042809042809,
+          "best_feasible_validation_macro_f1": 0.6809042809042809
+        },
+        "3": {
+          "capacity_rank": 3,
+          "selected_rank": 3,
+          "selected_start": 0,
+          "validation_macro_f1": 0.6894679357154002,
+          "best_feasible_validation_macro_f1": 0.6894679357154002
+        }
+      },
+      "test_metrics_by_capacity": {
+        "1": {
+          "accuracy": 0.8769601930036188,
+          "macro_f1": 0.712497279947775
+        },
+        "2": {
+          "accuracy": 0.8769601930036188,
+          "macro_f1": 0.712497279947775
+        },
+        "3": {
+          "accuracy": 0.879372738238842,
+          "macro_f1": 0.725132625994695
+        }
+      },
+      "capacity_weighted_test_macro_f1": 0.716709061963415,
+      "capacity_weighted_test_accuracy": 0.8777643747486933,
+      "mean_active_trainable_parameters_per_client": 1282.0,
+      "full_rank_trainable_parameters": 2306,
+      "base_encoder_parameters": 4385920,
+      "rank_coordinate_coverage_fraction": 1.0,
+      "round_manifest": [
+        {
+          "round": 0,
+          "windows": [
+            {
+              "client": 0,
+              "rank": 4,
+              "start": 0
+            },
+            {
+              "client": 1,
+              "rank": 4,
+              "start": 0
+            },
+            {
+              "client": 2,
+              "rank": 4,
+              "start": 0
+            },
+            {
+              "client": 3,
+              "rank": 4,
+              "start": 0
+            },
+            {
+              "client": 4,
+              "rank": 4,
+              "start": 0
+            },
+            {
+              "client": 5,
+              "rank": 4,
+              "start": 0
+            }
+          ]
+        },
+        {
+          "round": 1,
+          "windows": [
+            {
+              "client": 0,
+              "rank": 4,
+              "start": 0
+            },
+            {
+              "client": 1,
+              "rank": 4,
+              "start": 0
+            },
+            {
+              "client": 2,
+              "rank": 4,
+              "start": 0
+            },
+            {
+              "client": 3,
+              "rank": 4,
+              "start": 0
+            },
+            {
+              "client": 4,
+              "rank": 4,
+              "start": 0
+            },
+            {
+              "client": 5,
+              "rank": 4,
+              "start": 0
+            }
+          ]
+        },
+        {
+          "round": 2,
+          "windows": [
+            {
+              "client": 0,
+              "rank": 4,
+              "start": 0
+            },
+            {
+              "client": 1,
+              "rank": 4,
+              "start": 0
+            },
+            {
+              "client": 2,
+              "rank": 4,
+              "start": 0
+            },
+            {
+              "client": 3,
+              "rank": 4,
+              "start": 0
+            },
+            {
+              "client": 4,
+              "rank": 4,
+              "start": 0
+            },
+            {
+              "client": 5,
+              "rank": 4,
+              "start": 0
+            }
+          ]
+        }
+      ],
+      "wall_clock_seconds": 42.77409820002504
+    },
+    {
+      "dataset": "sms_spam_bert_tiny_lora",
+      "method": "cc_efl",
+      "seed": 1,
+      "rounds": 3,
+      "clients": 6,
+      "client_capacity_ranks": [
+        1,
+        2,
+        3,
+        1,
+        2,
+        3
+      ],
+      "client_partition_sizes": [
+        54,
+        1753,
+        26,
+        18,
+        343,
+        1714
+      ],
+      "client_partition_sha256": "5c038a311eed6b60e9aa52f17fc7fe3df86d0054d78d9613299034bc50dace41",
+      "selected_deployments_by_capacity": {
+        "1": {
+          "capacity_rank": 1,
+          "selected_rank": 1,
+          "selected_start": 0,
+          "validation_macro_f1": 0.6322025502540667,
+          "best_feasible_validation_macro_f1": 0.6322025502540667
+        },
+        "2": {
+          "capacity_rank": 2,
+          "selected_rank": 1,
+          "selected_start": 0,
+          "validation_macro_f1": 0.6322025502540667,
+          "best_feasible_validation_macro_f1": 0.6322025502540667
+        },
+        "3": {
+          "capacity_rank": 3,
+          "selected_rank": 3,
+          "selected_start": 0,
+          "validation_macro_f1": 0.6413021683146907,
+          "best_feasible_validation_macro_f1": 0.6413021683146907
+        }
+      },
+      "test_metrics_by_capacity": {
+        "1": {
+          "accuracy": 0.8805790108564535,
+          "macro_f1": 0.6899951273131097
+        },
+        "2": {
+          "accuracy": 0.8805790108564535,
+          "macro_f1": 0.6899951273131097
+        },
+        "3": {
+          "accuracy": 0.879372738238842,
+          "macro_f1": 0.6913993865213377
+        }
+      },
+      "capacity_weighted_test_macro_f1": 0.6904632137158524,
+      "capacity_weighted_test_accuracy": 0.8801769199839163,
+      "mean_active_trainable_parameters_per_client": 1282.0,
+      "full_rank_trainable_parameters": 2306,
+      "base_encoder_parameters": 4385920,
+      "rank_coordinate_coverage_fraction": 1.0,
+      "round_manifest": [
+        {
+          "round": 0,
+          "windows": [
+            {
+              "client": 0,
+              "rank": 1,
+              "start": 0
+            },
+            {
+              "client": 1,
+              "rank": 2,
+              "start": 1
+            },
+            {
+              "client": 2,
+              "rank": 3,
+              "start": 0
+            },
+            {
+              "client": 3,
+              "rank": 1,
+              "start": 3
+            },
+            {
+              "client": 4,
+              "rank": 2,
+              "start": 1
+            },
+            {
+              "client": 5,
+              "rank": 3,
+              "start": 1
+            }
+          ]
+        },
+        {
+          "round": 1,
+          "windows": [
+            {
+              "client": 0,
+              "rank": 1,
+              "start": 1
+            },
+            {
+              "client": 1,
+              "rank": 2,
+              "start": 2
+            },
+            {
+              "client": 2,
+              "rank": 3,
+              "start": 1
+            },
+            {
+              "client": 3,
+              "rank": 1,
+              "start": 0
+            },
+            {
+              "client": 4,
+              "rank": 2,
+              "start": 2
+            },
+            {
+              "client": 5,
+              "rank": 3,
+              "start": 0
+            }
+          ]
+        },
+        {
+          "round": 2,
+          "windows": [
+            {
+              "client": 0,
+              "rank": 1,
+              "start": 2
+            },
+            {
+              "client": 1,
+              "rank": 2,
+              "start": 0
+            },
+            {
+              "client": 2,
+              "rank": 3,
+              "start": 0
+            },
+            {
+              "client": 3,
+              "rank": 1,
+              "start": 1
+            },
+            {
+              "client": 4,
+              "rank": 2,
+              "start": 0
+            },
+            {
+              "client": 5,
+              "rank": 3,
+              "start": 1
+            }
+          ]
+        }
+      ],
+      "wall_clock_seconds": 42.36676110001281
+    }
+  ],
+  "runtime": {
+    "python": "3.13.7",
+    "torch": "2.9.0+cpu",
+    "transformers": "5.14.0.dev0",
+    "device": "cpu",
+    "tokenization_seconds": 0.35600310005247593,
+    "frozen_prefix_cache_seconds": 5.069280199939385
+  }
+}

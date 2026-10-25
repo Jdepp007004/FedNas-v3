@@ -25,6 +25,10 @@ env/
 
 # Data — too large / sensitive for git
 data/
+# Frozen-encoder benchmark inputs and cached embeddings are regenerated from
+# the public source and pinned model; retain the compact JSON result artifacts.
+non_medical_benchmark/.benchmarks/pretrained_sms/data/
+non_medical_benchmark/.benchmarks/pretrained_sms/cache/
 node_modules/
 *.tar.gz
 non_medical_benchmark/demo_site/

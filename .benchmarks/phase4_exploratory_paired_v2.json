@@ -1,0 +1,139 @@
+{
+  "analysis": "exploratory paired comparisons; unadjusted 95% Student-t intervals; no selection into primary claims",
+  "datasets": {
+    "digits": {
+      "endpoint": "accuracy",
+      "comparisons": {
+        "cc_efl_fjord_minus_cc_efl": {
+          "n": 5,
+          "mean": 0.02577777777777781,
+          "std": 0.04125068066944743,
+          "ci95_low": -0.025433496070177836,
+          "ci95_high": 0.07698905162573345
+        },
+        "cc_efl_fjord_minus_fjord": {
+          "n": 5,
+          "mean": -0.09007407407407406,
+          "std": 0.024732311715615133,
+          "ci95_low": -0.12077837198156201,
+          "ci95_high": -0.059369776166586105
+        },
+        "cc_efl_minus_cc_efl_random_window": {
+          "n": 5,
+          "mean": -0.03140740740740744,
+          "std": 0.045389942868219686,
+          "ci95_low": -0.08775743015719198,
+          "ci95_high": 0.024942615342377093
+        }
+      }
+    },
+    "adult": {
+      "endpoint": "macro_f1",
+      "comparisons": {
+        "cc_efl_fjord_minus_cc_efl": {
+          "n": 5,
+          "mean": 0.039209864788049706,
+          "std": 0.04501543084406294,
+          "ci95_low": -0.016675214413720878,
+          "ci95_high": 0.0950949439898203
+        },
+        "cc_efl_fjord_minus_fjord": {
+          "n": 5,
+          "mean": 0.03457767442934227,
+          "std": 0.08252839737567828,
+          "ci95_low": -0.06787843755838215,
+          "ci95_high": 0.1370337864170667
+        },
+        "cc_efl_minus_cc_efl_random_window": {
+          "n": 5,
+          "mean": -0.07213947248929506,
+          "std": 0.047639396125971005,
+          "ci95_low": -0.13128211259523875,
+          "ci95_high": -0.012996832383351357
+        }
+      }
+    },
+    "bank_marketing": {
+      "endpoint": "macro_f1",
+      "comparisons": {
+        "cc_efl_fjord_minus_cc_efl": {
+          "n": 5,
+          "mean": 0.004381946010780147,
+          "std": 0.03797690984719381,
+          "ci95_low": -0.042765056136125704,
+          "ci95_high": 0.051528948157685994
+        },
+        "cc_efl_fjord_minus_fjord": {
+          "n": 5,
+          "mean": -0.04205788717697088,
+          "std": 0.06318524840652587,
+          "ci95_low": -0.12050015786886548,
+          "ci95_high": 0.036384383514923714
+        },
+        "cc_efl_minus_cc_efl_random_window": {
+          "n": 5,
+          "mean": 0.02310970513911794,
+          "std": 0.08365218399849855,
+          "ci95_low": -0.08074154854212387,
+          "ci95_high": 0.12696095882035974
+        }
+      }
+    },
+    "har": {
+      "endpoint": "macro_f1",
+      "comparisons": {
+        "cc_efl_fjord_minus_cc_efl": {
+          "n": 5,
+          "mean": 0.04725397148406831,
+          "std": 0.0624376381739069,
+          "ci95_low": -0.030260167314416324,
+          "ci95_high": 0.12476811028255294
+        },
+        "cc_efl_fjord_minus_fjord": {
+          "n": 5,
+          "mean": -0.04325457806456075,
+          "std": 0.04287314479785298,
+          "ci95_low": -0.09648008424613705,
+          "ci95_high": 0.009970928117015547
+        },
+        "cc_efl_minus_cc_efl_random_window": {
+          "n": 5,
+          "mean": -0.00431066422041233,
+          "std": 0.05359246095680736,
+          "ci95_low": -0.07084382560598171,
+          "ci95_high": 0.06222249716515704
+        }
+      }
+    }
+  },
+  "digits_prefix_warmup": {
+    "cc_efl_warmup_fjord_minus_cc_efl": {
+      "n": 5,
+      "mean": 0.0029629629629629893,
+      "std": 0.05442302425695376,
+      "ci95_low": -0.064601313641109,
+      "ci95_high": 0.07052723956703498
+    },
+    "cc_efl_warmup_fjord_minus_cc_efl_fjord": {
+      "n": 5,
+      "mean": -0.022814814814814822,
+      "std": 0.021636731457134455,
+      "ci95_low": -0.04967605835901333,
+      "ci95_high": 0.004046428729383683
+    },
+    "cc_efl_warmup_fjord_minus_fjord": {
+      "n": 5,
+      "mean": -0.11288888888888889,
+      "std": 0.03517387732523294,
+      "ci95_low": -0.1565560244309951,
+      "ci95_high": -0.06922175334678268
+    },
+    "cc_efl_warmup_fjord_minus_cc_efl_random_window": {
+      "n": 5,
+      "mean": -0.02844444444444445,
+      "std": 0.05489883450655697,
+      "ci95_low": -0.09659942279201862,
+      "ci95_high": 0.039710533903129716
+    }
+  }
+}

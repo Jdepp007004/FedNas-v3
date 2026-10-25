@@ -1,0 +1,1098 @@
+{
+  "experiment": "replicated-small-model-server-ensemble",
+  "dataset": "har",
+  "model_family": "residual-free LayerNorm MLP",
+  "members": 20,
+  "warmup_rounds": 8,
+  "ensemble_rounds": 20,
+  "total_rounds": 28,
+  "seeds": [
+    1
+  ],
+  "four_device_cpu_profiles": [
+    {
+      "client_id": 0,
+      "device_id": "device-1",
+      "profile_name": "edge-1t",
+      "logical_cpu_ids": [
+        0
+      ],
+      "torch_threads": 1,
+      "capacity_tier": 0
+    },
+    {
+      "client_id": 1,
+      "device_id": "device-2",
+      "profile_name": "low-2t",
+      "logical_cpu_ids": [
+        1,
+        2
+      ],
+      "torch_threads": 2,
+      "capacity_tier": 0
+    },
+    {
+      "client_id": 2,
+      "device_id": "device-3",
+      "profile_name": "mid-4t",
+      "logical_cpu_ids": [
+        3,
+        4,
+        5,
+        6
+      ],
+      "torch_threads": 4,
+      "capacity_tier": 1
+    },
+    {
+      "client_id": 3,
+      "device_id": "device-4",
+      "profile_name": "high-8t",
+      "logical_cpu_ids": [
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14
+      ],
+      "torch_threads": 8,
+      "capacity_tier": 2
+    }
+  ],
+  "coordinator_logical_cpu_ids": [
+    15,
+    16,
+    17
+  ],
+  "worker_affinity_verifications": [
+    [
+      0
+    ],
+    [
+      1,
+      2
+    ],
+    [
+      3,
+      4,
+      5,
+      6
+    ],
+    [
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14
+    ]
+  ],
+  "worker_pool_startup_seconds": 10.090588999912143,
+  "hardware": {
+    "platform": "Windows-11-10.0.26200-SP0",
+    "processor": "Intel64 Family 6 Model 170 Stepping 4, GenuineIntel",
+    "logical_cpu_count": 18,
+    "available_logical_cpu_ids": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17
+    ],
+    "pytorch": "2.9.0+cpu",
+    "cuda_available": false,
+    "physical_device_measurements": false
+  },
+  "aggregate": {
+    "ensemble_test_macro_f1": {
+      "n": 1,
+      "mean": 0.7268794412503498,
+      "std": 0.0,
+      "ci95_low": null,
+      "ci95_high": null
+    },
+    "baseline_full_model_test_macro_f1": {
+      "n": 1,
+      "mean": 0.8372431172987147,
+      "std": 0.0,
+      "ci95_low": null,
+      "ci95_high": null
+    },
+    "baseline_capacity_test_macro_f1": {
+      "n": 1,
+      "mean": 0.8857143528763363,
+      "std": 0.0,
+      "ci95_low": null,
+      "ci95_high": null
+    },
+    "paired_ensemble_minus_full_fedavg_macro_f1": {
+      "n": 1,
+      "mean": -0.11036367604836494,
+      "std": 0.0,
+      "ci95_low": null,
+      "ci95_high": null
+    },
+    "paired_ensemble_minus_single_heterofl_capacity_macro_f1": {
+      "n": 1,
+      "mean": -0.1588349116259865,
+      "std": 0.0,
+      "ci95_low": null,
+      "ci95_high": null
+    }
+  },
+  "run_manifest": {
+    "captured_at_utc": "2026-10-25T05:35:25.888489+00:00",
+    "dataset": "har",
+    "split_sizes": {
+      "train": 7352,
+      "validation": 1473,
+      "test": 1474
+    },
+    "split_sha256": {
+      "train": "24e8f86ef545d8eb141bc7731a2670b940ab00d0e30e0b27add3fe1c591a89b1",
+      "validation": "64c0f6f974d4dd831eed5eeacfe97afd7e97296090663157e9449b9c22d16787",
+      "test": "7863706c49573c3e72311d478e67384bde40c1266d9159e47a1154a961317037"
+    },
+    "source_archive_sha256": "c00b803081a5c797cd5e4b83700a9810b38d53d9d84e01917e090e1fdbc81031",
+    "benchmark_source_sha256": "6a44907d1882dc2c95baafd00865954c5938ac215b52ab89914647c15ab85cad",
+    "arguments": {
+      "members": 20,
+      "warmup_rounds": 8,
+      "ensemble_rounds": 20,
+      "seeds": [
+        1
+      ],
+      "cpu_profiles": [
+        {
+          "client_id": 0,
+          "device_id": "device-1",
+          "profile_name": "edge-1t",
+          "logical_cpu_ids": [
+            0
+          ],
+          "torch_threads": 1,
+          "capacity_tier": 0
+        },
+        {
+          "client_id": 1,
+          "device_id": "device-2",
+          "profile_name": "low-2t",
+          "logical_cpu_ids": [
+            1,
+            2
+          ],
+          "torch_threads": 2,
+          "capacity_tier": 0
+        },
+        {
+          "client_id": 2,
+          "device_id": "device-3",
+          "profile_name": "mid-4t",
+          "logical_cpu_ids": [
+            3,
+            4,
+            5,
+            6
+          ],
+          "torch_threads": 4,
+          "capacity_tier": 1
+        },
+        {
+          "client_id": 3,
+          "device_id": "device-4",
+          "profile_name": "high-8t",
+          "logical_cpu_ids": [
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14
+          ],
+          "torch_threads": 8,
+          "capacity_tier": 2
+        }
+      ],
+      "coordinator_logical_cpu_ids": [
+        15,
+        16,
+        17
+      ],
+      "base_dataset_spec": {
+        "name": "har",
+        "description": "UCI Human Activity Recognition; 561-feature smartphone sensor data.",
+        "source_url": "https://archive.ics.uci.edu/dataset/240/human%2Bactivity%2Brecognition%2Busing%2Bsmartphones",
+        "task": "multiclass classification",
+        "num_classes": 6,
+        "max_samples": 12000,
+        "max_depth": 5,
+        "hidden_dim": 96,
+        "widths": [
+          24,
+          48,
+          72,
+          96
+        ],
+        "clients": 8,
+        "dirichlet_alpha": 0.5,
+        "batch_size": 128,
+        "local_epochs": 1,
+        "learning_rate": 0.001,
+        "fedprox_mu": 0.005,
+        "selection_metric": "val_macro_f1",
+        "class_weighting": "balanced"
+      }
+    },
+    "software": {
+      "python": "3.13.7",
+      "platform": "Windows-11-10.0.26200-SP0",
+      "numpy": "2.2.6",
+      "pandas": "2.3.3",
+      "scikit_learn": "1.7.2",
+      "pytorch": "2.9.0+cpu",
+      "cuda_available": false,
+      "xpu_available": false
+    },
+    "git": {
+      "commit": "7e370766d65c6a783fa66792b8c73445892f2f51",
+      "worktree_dirty": true
+    }
+  },
+  "runs": [
+    {
+      "seed": 1,
+      "method": "replica_ensemble",
+      "clients": 4,
+      "members": 20,
+      "warmup_rounds": 8,
+      "ensemble_rounds": 20,
+      "total_rounds": 28,
+      "client_capacity_tiers": [
+        0,
+        0,
+        1,
+        2
+      ],
+      "client_specs": [
+        {
+          "client_id": 0,
+          "device_id": "device-1",
+          "profile_name": "edge-1t",
+          "logical_cpu_ids": [
+            0
+          ],
+          "torch_threads": 1,
+          "capacity_tier": 0
+        },
+        {
+          "client_id": 1,
+          "device_id": "device-2",
+          "profile_name": "low-2t",
+          "logical_cpu_ids": [
+            1,
+            2
+          ],
+          "torch_threads": 2,
+          "capacity_tier": 0
+        },
+        {
+          "client_id": 2,
+          "device_id": "device-3",
+          "profile_name": "mid-4t",
+          "logical_cpu_ids": [
+            3,
+            4,
+            5,
+            6
+          ],
+          "torch_threads": 4,
+          "capacity_tier": 1
+        },
+        {
+          "client_id": 3,
+          "device_id": "device-4",
+          "profile_name": "high-8t",
+          "logical_cpu_ids": [
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14
+          ],
+          "torch_threads": 8,
+          "capacity_tier": 2
+        }
+      ],
+      "ensemble_members_parameters": 1252920,
+      "ensemble_members_fp32_mib": 4.779510498046875,
+      "mean_active_client_parameters": 29958.0,
+      "mean_active_client_fp32_mib": 0.11428070068359375,
+      "client_parameter_reduction_vs_ensemble": 0.9760894550330428,
+      "mean_upload_bytes_per_round": 479328.0,
+      "mean_download_bytes_per_round": 479328.0,
+      "mean_total_communication_bytes_per_round": 958656.0,
+      "final_round": 20,
+      "validation_accuracy_at_last_round": 0.769857433808554,
+      "validation_macro_f1_at_last_round": 0.7211649056586019,
+      "test_accuracy": 0.7754409769335142,
+      "test_macro_f1": 0.7268794412503498,
+      "baseline_full_model_accuracy": 0.8466757123473542,
+      "baseline_full_model_macro_f1": 0.8372431172987147,
+      "baseline_capacity_accuracy": 0.8924694708276798,
+      "baseline_capacity_macro_f1": 0.8857143528763363,
+      "baseline_wall_clock_seconds": 7.806131300050765,
+      "ensemble_wall_clock_seconds": 23.08053439995274,
+      "mean_slowest_client_training_seconds_per_round": 0.11744983992539346,
+      "member_assignment_counts": {
+        "0": 4,
+        "1": 4,
+        "2": 4,
+        "3": 4,
+        "4": 4,
+        "5": 4,
+        "6": 4,
+        "7": 4,
+        "8": 4,
+        "9": 4,
+        "10": 4,
+        "11": 4,
+        "12": 4,
+        "13": 4,
+        "14": 4,
+        "15": 4,
+        "16": 4,
+        "17": 4,
+        "18": 4,
+        "19": 4
+      },
+      "history": [
+        {
+          "round": 1,
+          "mean_client_loss": 0.20151780638843775,
+          "client_training_seconds": [
+            {
+              "client_id": 0,
+              "seconds": 0.05085979960858822
+            },
+            {
+              "client_id": 1,
+              "seconds": 0.04193420009687543
+            },
+            {
+              "client_id": 2,
+              "seconds": 0.09420539997518063
+            },
+            {
+              "client_id": 3,
+              "seconds": 0.11065929988399148
+            }
+          ],
+          "participating_clients": 4,
+          "mean_client_parameters": 29958.0,
+          "mean_active_flops": 59148.0,
+          "total_upload_bytes": 479328,
+          "total_download_bytes": 479328,
+          "validation_accuracy": 0.7678207739307535,
+          "validation_macro_f1": 0.7202846681471017,
+          "member_ids": [
+            0,
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "round": 2,
+          "mean_client_loss": 0.2594163063913584,
+          "client_training_seconds": [
+            {
+              "client_id": 0,
+              "seconds": 0.05307199992239475
+            },
+            {
+              "client_id": 1,
+              "seconds": 0.04079040000215173
+            },
+            {
+              "client_id": 2,
+              "seconds": 0.09816999966278672
+            },
+            {
+              "client_id": 3,
+              "seconds": 0.11490639997646213
+            }
+          ],
+          "participating_clients": 4,
+          "mean_client_parameters": 29958.0,
+          "mean_active_flops": 59148.0,
+          "total_upload_bytes": 479328,
+          "total_download_bytes": 479328,
+          "validation_accuracy": 0.7684996605566871,
+          "validation_macro_f1": 0.720743562229044,
+          "member_ids": [
+            4,
+            5,
+            6,
+            7
+          ]
+        },
+        {
+          "round": 3,
+          "mean_client_loss": 0.20682809129357338,
+          "client_training_seconds": [
+            {
+              "client_id": 0,
+              "seconds": 0.054323900025337934
+            },
+            {
+              "client_id": 1,
+              "seconds": 0.04295920021831989
+            },
+            {
+              "client_id": 2,
+              "seconds": 0.09660359984263778
+            },
+            {
+              "client_id": 3,
+              "seconds": 0.11674659978598356
+            }
+          ],
+          "participating_clients": 4,
+          "mean_client_parameters": 29958.0,
+          "mean_active_flops": 59148.0,
+          "total_upload_bytes": 479328,
+          "total_download_bytes": 479328,
+          "validation_accuracy": 0.7664630006788866,
+          "validation_macro_f1": 0.7184525423046564,
+          "member_ids": [
+            8,
+            9,
+            10,
+            11
+          ]
+        },
+        {
+          "round": 4,
+          "mean_client_loss": 0.2040838599205017,
+          "client_training_seconds": [
+            {
+              "client_id": 0,
+              "seconds": 0.06434880010783672
+            },
+            {
+              "client_id": 1,
+              "seconds": 0.04199719987809658
+            },
+            {
+              "client_id": 2,
+              "seconds": 0.09521570010110736
+            },
+            {
+              "client_id": 3,
+              "seconds": 0.12022069981321692
+            }
+          ],
+          "participating_clients": 4,
+          "mean_client_parameters": 29958.0,
+          "mean_active_flops": 59148.0,
+          "total_upload_bytes": 479328,
+          "total_download_bytes": 479328,
+          "validation_accuracy": 0.7678207739307535,
+          "validation_macro_f1": 0.7195624663238661,
+          "member_ids": [
+            12,
+            13,
+            14,
+            15
+          ]
+        },
+        {
+          "round": 5,
+          "mean_client_loss": 0.23508516186848283,
+          "client_training_seconds": [
+            {
+              "client_id": 0,
+              "seconds": 0.06630629999563098
+            },
+            {
+              "client_id": 1,
+              "seconds": 0.039779100101441145
+            },
+            {
+              "client_id": 2,
+              "seconds": 0.09805180039256811
+            },
+            {
+              "client_id": 3,
+              "seconds": 0.1306547001004219
+            }
+          ],
+          "participating_clients": 4,
+          "mean_client_parameters": 29958.0,
+          "mean_active_flops": 59148.0,
+          "total_upload_bytes": 479328,
+          "total_download_bytes": 479328,
+          "validation_accuracy": 0.7678207739307535,
+          "validation_macro_f1": 0.7189592369180637,
+          "member_ids": [
+            16,
+            17,
+            18,
+            19
+          ]
+        },
+        {
+          "round": 6,
+          "mean_client_loss": 0.22727373521775007,
+          "client_training_seconds": [
+            {
+              "client_id": 0,
+              "seconds": 0.07275160029530525
+            },
+            {
+              "client_id": 1,
+              "seconds": 0.04159340029582381
+            },
+            {
+              "client_id": 2,
+              "seconds": 0.10059150028973818
+            },
+            {
+              "client_id": 3,
+              "seconds": 0.12616819981485605
+            }
+          ],
+          "participating_clients": 4,
+          "mean_client_parameters": 29958.0,
+          "mean_active_flops": 59148.0,
+          "total_upload_bytes": 479328,
+          "total_download_bytes": 479328,
+          "validation_accuracy": 0.7739307535641547,
+          "validation_macro_f1": 0.725196610695055,
+          "member_ids": [
+            0,
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "round": 7,
+          "mean_client_loss": 0.0974458244163543,
+          "client_training_seconds": [
+            {
+              "client_id": 0,
+              "seconds": 0.055031499825417995
+            },
+            {
+              "client_id": 1,
+              "seconds": 0.0402663997374475
+            },
+            {
+              "client_id": 2,
+              "seconds": 0.09693189989775419
+            },
+            {
+              "client_id": 3,
+              "seconds": 0.11544930003583431
+            }
+          ],
+          "participating_clients": 4,
+          "mean_client_parameters": 29958.0,
+          "mean_active_flops": 59148.0,
+          "total_upload_bytes": 479328,
+          "total_download_bytes": 479328,
+          "validation_accuracy": 0.7732518669382213,
+          "validation_macro_f1": 0.7245437494662875,
+          "member_ids": [
+            4,
+            5,
+            6,
+            7
+          ]
+        },
+        {
+          "round": 8,
+          "mean_client_loss": 0.14601753605529666,
+          "client_training_seconds": [
+            {
+              "client_id": 0,
+              "seconds": 0.053541400004178286
+            },
+            {
+              "client_id": 1,
+              "seconds": 0.03924159985035658
+            },
+            {
+              "client_id": 2,
+              "seconds": 0.10167749971151352
+            },
+            {
+              "client_id": 3,
+              "seconds": 0.10653760004788637
+            }
+          ],
+          "participating_clients": 4,
+          "mean_client_parameters": 29958.0,
+          "mean_active_flops": 59148.0,
+          "total_upload_bytes": 479328,
+          "total_download_bytes": 479328,
+          "validation_accuracy": 0.7739307535641547,
+          "validation_macro_f1": 0.7255189075872023,
+          "member_ids": [
+            8,
+            9,
+            10,
+            11
+          ]
+        },
+        {
+          "round": 9,
+          "mean_client_loss": 0.11664561554789543,
+          "client_training_seconds": [
+            {
+              "client_id": 0,
+              "seconds": 0.053419300355017185
+            },
+            {
+              "client_id": 1,
+              "seconds": 0.04159260028973222
+            },
+            {
+              "client_id": 2,
+              "seconds": 0.10389900021255016
+            },
+            {
+              "client_id": 3,
+              "seconds": 0.11992640001699328
+            }
+          ],
+          "participating_clients": 4,
+          "mean_client_parameters": 29958.0,
+          "mean_active_flops": 59148.0,
+          "total_upload_bytes": 479328,
+          "total_download_bytes": 479328,
+          "validation_accuracy": 0.7739307535641547,
+          "validation_macro_f1": 0.7256832102689857,
+          "member_ids": [
+            12,
+            13,
+            14,
+            15
+          ]
+        },
+        {
+          "round": 10,
+          "mean_client_loss": 0.12050415482372046,
+          "client_training_seconds": [
+            {
+              "client_id": 0,
+              "seconds": 0.05097910016775131
+            },
+            {
+              "client_id": 1,
+              "seconds": 0.040375899989157915
+            },
+            {
+              "client_id": 2,
+              "seconds": 0.08815110009163618
+            },
+            {
+              "client_id": 3,
+              "seconds": 0.11094099981710315
+            }
+          ],
+          "participating_clients": 4,
+          "mean_client_parameters": 29958.0,
+          "mean_active_flops": 59148.0,
+          "total_upload_bytes": 479328,
+          "total_download_bytes": 479328,
+          "validation_accuracy": 0.7752885268160217,
+          "validation_macro_f1": 0.727345603045258,
+          "member_ids": [
+            16,
+            17,
+            18,
+            19
+          ]
+        },
+        {
+          "round": 11,
+          "mean_client_loss": 0.11127730179578066,
+          "client_training_seconds": [
+            {
+              "client_id": 0,
+              "seconds": 0.05336590018123388
+            },
+            {
+              "client_id": 1,
+              "seconds": 0.03866069996729493
+            },
+            {
+              "client_id": 2,
+              "seconds": 0.09494969993829727
+            },
+            {
+              "client_id": 3,
+              "seconds": 0.11205489980056882
+            }
+          ],
+          "participating_clients": 4,
+          "mean_client_parameters": 29958.0,
+          "mean_active_flops": 59148.0,
+          "total_upload_bytes": 479328,
+          "total_download_bytes": 479328,
+          "validation_accuracy": 0.7725729803122878,
+          "validation_macro_f1": 0.7239287463401229,
+          "member_ids": [
+            0,
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "round": 12,
+          "mean_client_loss": 0.15892529115080833,
+          "client_training_seconds": [
+            {
+              "client_id": 0,
+              "seconds": 0.053592500276863575
+            },
+            {
+              "client_id": 1,
+              "seconds": 0.04075970035046339
+            },
+            {
+              "client_id": 2,
+              "seconds": 0.08760289987549186
+            },
+            {
+              "client_id": 3,
+              "seconds": 0.11538140010088682
+            }
+          ],
+          "participating_clients": 4,
+          "mean_client_parameters": 29958.0,
+          "mean_active_flops": 59148.0,
+          "total_upload_bytes": 479328,
+          "total_download_bytes": 479328,
+          "validation_accuracy": 0.7725729803122878,
+          "validation_macro_f1": 0.7239287463401229,
+          "member_ids": [
+            4,
+            5,
+            6,
+            7
+          ]
+        },
+        {
+          "round": 13,
+          "mean_client_loss": 0.0884449603036046,
+          "client_training_seconds": [
+            {
+              "client_id": 0,
+              "seconds": 0.052977200131863356
+            },
+            {
+              "client_id": 1,
+              "seconds": 0.04032970033586025
+            },
+            {
+              "client_id": 2,
+              "seconds": 0.09178349981084466
+            },
+            {
+              "client_id": 3,
+              "seconds": 0.10294840019196272
+            }
+          ],
+          "participating_clients": 4,
+          "mean_client_parameters": 29958.0,
+          "mean_active_flops": 59148.0,
+          "total_upload_bytes": 479328,
+          "total_download_bytes": 479328,
+          "validation_accuracy": 0.7712152070604209,
+          "validation_macro_f1": 0.7221351561747155,
+          "member_ids": [
+            8,
+            9,
+            10,
+            11
+          ]
+        },
+        {
+          "round": 14,
+          "mean_client_loss": 0.15073466300964355,
+          "client_training_seconds": [
+            {
+              "client_id": 0,
+              "seconds": 0.054872500244528055
+            },
+            {
+              "client_id": 1,
+              "seconds": 0.039781199768185616
+            },
+            {
+              "client_id": 2,
+              "seconds": 0.09497039997950196
+            },
+            {
+              "client_id": 3,
+              "seconds": 0.115947799757123
+            }
+          ],
+          "participating_clients": 4,
+          "mean_client_parameters": 29958.0,
+          "mean_active_flops": 59148.0,
+          "total_upload_bytes": 479328,
+          "total_download_bytes": 479328,
+          "validation_accuracy": 0.769857433808554,
+          "validation_macro_f1": 0.7202195787537797,
+          "member_ids": [
+            12,
+            13,
+            14,
+            15
+          ]
+        },
+        {
+          "round": 15,
+          "mean_client_loss": 0.11926420219242573,
+          "client_training_seconds": [
+            {
+              "client_id": 0,
+              "seconds": 0.05309669999405742
+            },
+            {
+              "client_id": 1,
+              "seconds": 0.04035010002553463
+            },
+            {
+              "client_id": 2,
+              "seconds": 0.09408470010384917
+            },
+            {
+              "client_id": 3,
+              "seconds": 0.10841969959437847
+            }
+          ],
+          "participating_clients": 4,
+          "mean_client_parameters": 29958.0,
+          "mean_active_flops": 59148.0,
+          "total_upload_bytes": 479328,
+          "total_download_bytes": 479328,
+          "validation_accuracy": 0.7684996605566871,
+          "validation_macro_f1": 0.7185463946964737,
+          "member_ids": [
+            16,
+            17,
+            18,
+            19
+          ]
+        },
+        {
+          "round": 16,
+          "mean_client_loss": 0.07479129638522863,
+          "client_training_seconds": [
+            {
+              "client_id": 0,
+              "seconds": 0.054126299917697906
+            },
+            {
+              "client_id": 1,
+              "seconds": 0.03960489993914962
+            },
+            {
+              "client_id": 2,
+              "seconds": 0.09511480014771223
+            },
+            {
+              "client_id": 3,
+              "seconds": 0.1241198000498116
+            }
+          ],
+          "participating_clients": 4,
+          "mean_client_parameters": 29958.0,
+          "mean_active_flops": 59148.0,
+          "total_upload_bytes": 479328,
+          "total_download_bytes": 479328,
+          "validation_accuracy": 0.7718940936863544,
+          "validation_macro_f1": 0.7219720951301759,
+          "member_ids": [
+            0,
+            1,
+            2,
+            3
+          ]
+        },
+        {
+          "round": 17,
+          "mean_client_loss": 0.061740593053400517,
+          "client_training_seconds": [
+            {
+              "client_id": 0,
+              "seconds": 0.08983749989420176
+            },
+            {
+              "client_id": 1,
+              "seconds": 0.04859100002795458
+            },
+            {
+              "client_id": 2,
+              "seconds": 0.09927339991554618
+            },
+            {
+              "client_id": 3,
+              "seconds": 0.13273039972409606
+            }
+          ],
+          "participating_clients": 4,
+          "mean_client_parameters": 29958.0,
+          "mean_active_flops": 59148.0,
+          "total_upload_bytes": 479328,
+          "total_download_bytes": 479328,
+          "validation_accuracy": 0.7691785471826205,
+          "validation_macro_f1": 0.718954798162626,
+          "member_ids": [
+            4,
+            5,
+            6,
+            7
+          ]
+        },
+        {
+          "round": 18,
+          "mean_client_loss": 0.06988100428134203,
+          "client_training_seconds": [
+            {
+              "client_id": 0,
+              "seconds": 0.05514550022780895
+            },
+            {
+              "client_id": 1,
+              "seconds": 0.042334800120443106
+            },
+            {
+              "client_id": 2,
+              "seconds": 0.10038809990510345
+            },
+            {
+              "client_id": 3,
+              "seconds": 0.13170929998159409
+            }
+          ],
+          "participating_clients": 4,
+          "mean_client_parameters": 29958.0,
+          "mean_active_flops": 59148.0,
+          "total_upload_bytes": 479328,
+          "total_download_bytes": 479328,
+          "validation_accuracy": 0.7712152070604209,
+          "validation_macro_f1": 0.7217040425906629,
+          "member_ids": [
+            8,
+            9,
+            10,
+            11
+          ]
+        },
+        {
+          "round": 19,
+          "mean_client_loss": 0.1261714966967702,
+          "client_training_seconds": [
+            {
+              "client_id": 0,
+              "seconds": 0.05395809980109334
+            },
+            {
+              "client_id": 1,
+              "seconds": 0.04348749993368983
+            },
+            {
+              "client_id": 2,
+              "seconds": 0.096291100140661
+            },
+            {
+              "client_id": 3,
+              "seconds": 0.11388950003311038
+            }
+          ],
+          "participating_clients": 4,
+          "mean_client_parameters": 29958.0,
+          "mean_active_flops": 59148.0,
+          "total_upload_bytes": 479328,
+          "total_download_bytes": 479328,
+          "validation_accuracy": 0.7712152070604209,
+          "validation_macro_f1": 0.722638630737123,
+          "member_ids": [
+            12,
+            13,
+            14,
+            15
+          ]
+        },
+        {
+          "round": 20,
+          "mean_client_loss": 0.08823259640485048,
+          "client_training_seconds": [
+            {
+              "client_id": 0,
+              "seconds": 0.06148889986798167
+            },
+            {
+              "client_id": 1,
+              "seconds": 0.040557699743658304
+            },
+            {
+              "client_id": 2,
+              "seconds": 0.09555609989911318
+            },
+            {
+              "client_id": 3,
+              "seconds": 0.11958539998158813
+            }
+          ],
+          "participating_clients": 4,
+          "mean_client_parameters": 29958.0,
+          "mean_active_flops": 59148.0,
+          "total_upload_bytes": 479328,
+          "total_download_bytes": 479328,
+          "validation_accuracy": 0.769857433808554,
+          "validation_macro_f1": 0.7211649056586019,
+          "member_ids": [
+            16,
+            17,
+            18,
+            19
+          ]
+        }
+      ],
+      "warmup_parent_parameters": 62646,
+      "warmup_parent_validation_macro_f1": 0.7946399465151666,
+      "max_abs_initial_ensemble_logit_difference": 1.9073486328125e-06
+    }
+  ]
+}

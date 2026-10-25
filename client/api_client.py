@@ -187,6 +187,7 @@ class APIClient:
         metrics: dict,
         round_id: int,
         active_depth: int,
+        active_width: int = None,
     ) -> dict:
         """
         POST /api/projects/{proj_id}/update
@@ -197,6 +198,7 @@ class APIClient:
         payload = {
             "round_id": round_id,
             "active_depth": active_depth,
+            "active_width": active_width,
             "weights": encrypted,
             "num_samples": num_samples,
             "metrics": metrics,

@@ -22,7 +22,7 @@ from torch.utils.data import DataLoader, Dataset, Subset
 from torchvision import datasets, transforms
 
 from .data import make_client_partitions
-from .federated import ClientArchitecture, aggregate_subnet_updates
+from .federated import ClientArchitecture, _parameter_coverage, aggregate_subnet_updates
 from .models import load_numpy_state, load_subnet_state, state_to_numpy
 
 
@@ -373,20 +373,98 @@ def _architecture_for_round(
     strategy: str,
     max_depth: int,
     widths: tuple[int, ...],
+    tier_assignments: Optional[list[int]] = None,
+    rotate_tiers: bool = False,
+    window_rng: Optional[np.random.Generator] = None,
 ) -> ClientArchitecture:
     if strategy in {"fedavg", "fedprox"}:
         return ClientArchitecture(max_depth, widths[-1], 0)
     candidates = (
         ClientArchitecture(1, widths[0], 0),
-        ClientArchitecture(max_depth // 2, widths[len(widths) // 2 - 1], 0),
-        ClientArchitecture(max_depth, widths[-1], 0),
+        ClientArchitecture(max(1, max_depth // 2), widths[min(1, len(widths) - 1)], 0),
+        ClientArchitecture(max_depth, widths[-2] if len(widths) > 1 else widths[-1], 0),
     )
-    architecture = candidates[(client_id + round_id) % len(candidates)]
-    if strategy in {"fedrolex", "cc_efl"}:
+    assignment = (
+        tier_assignments[client_id]
+        if tier_assignments is not None
+        else client_id % len(candidates)
+    )
+    tier_index = (assignment + round_id) % len(candidates) if rotate_tiers else assignment
+    architecture = candidates[tier_index]
+    if strategy in {
+        "fedrolex", "cc_efl", "cc_efl_no_prox", "cc_efl_uniform",
+        "cc_efl_random_window", "cc_efl_dynamic",
+    }:
         max_offset = max(0, widths[-1] - architecture.width)
         offset = 0 if max_offset == 0 else (round_id * architecture.width + client_id) % (max_offset + 1)
+        if strategy == "cc_efl_random_window" and max_offset:
+            offset = int(window_rng.integers(max_offset + 1)) if window_rng is not None else offset
         return ClientArchitecture(architecture.depth, architecture.width, offset)
     return architecture
+
+
+def _cifar_capacity_candidates(
+    max_depth: int, widths: tuple[int, ...]
+) -> tuple[ClientArchitecture, ...]:
+    return (
+        ClientArchitecture(1, widths[0], 0),
+        ClientArchitecture(max(1, max_depth // 2), widths[min(1, len(widths) - 1)], 0),
+        ClientArchitecture(max_depth, widths[-2] if len(widths) > 1 else widths[-1], 0),
+    )
+
+
+def _select_cifar_models_for_capacities(
+    candidates: list[dict],
+    capacity_tiers: list[int],
+    capacity_candidates: tuple[ClientArchitecture, ...],
+    test_scores: Optional[list[dict]] = None,
+) -> dict:
+    selected_rows = []
+    test_lookup = {
+        (item["depth"], item["width"]): item
+        for item in (test_scores or [])
+    }
+    for tier_index in sorted(set(capacity_tiers)):
+        capacity = capacity_candidates[tier_index]
+        feasible = [
+            item for item in candidates
+            if item["depth"] <= capacity.depth and item["width"] <= capacity.width
+        ]
+        best_val = max(item["val_accuracy"] for item in feasible)
+        eligible = [item for item in feasible if item["val_accuracy"] >= best_val - 0.002]
+        selected = dict(min(eligible, key=lambda item: (item["flops"], item["parameters"])))
+        selected.update(
+            {
+                "capacity_tier": int(tier_index),
+                "capacity_depth": capacity.depth,
+                "capacity_width": capacity.width,
+                "client_count": capacity_tiers.count(tier_index),
+            }
+        )
+        if test_scores is not None:
+            test_result = test_lookup[(selected["depth"], selected["width"])]
+            selected["test_accuracy"] = test_result["test_accuracy"]
+        selected_rows.append(selected)
+    n_clients = max(len(capacity_tiers), 1)
+
+    def average(field: str) -> Optional[float]:
+        if not any(row.get(field) is not None for row in selected_rows):
+            return None
+        return float(
+            sum(float(row[field]) * row["client_count"] for row in selected_rows if row.get(field) is not None)
+            / sum(row["client_count"] for row in selected_rows if row.get(field) is not None)
+        )
+
+    modal = max(selected_rows, key=lambda item: item["client_count"])
+    return {
+        "selected_models_by_capacity": selected_rows,
+        "selected_depth": modal["depth"],
+        "selected_width": modal["width"],
+        "selected_val_accuracy": average("val_accuracy"),
+        "selected_test_accuracy": average("test_accuracy"),
+        "selected_deployed_parameters": average("parameters"),
+        "selected_deployed_flops": average("flops"),
+    }
 
 
 def run_cifar_experiment(
@@ -401,7 +479,11 @@ def run_cifar_experiment(
     widths: tuple[int, ...] = (16, 32, 48, 64),
     max_depth: int = 4,
 ) -> dict:
-    allowed = {"fedavg", "fedprox", "heterofl", "fjord", "fedrolex", "elastic", "maxnet", "cc_efl"}
+    allowed = {
+        "fedavg", "fedprox", "heterofl", "fjord", "fedrolex", "elastic",
+        "maxnet", "cc_efl", "cc_efl_no_prox", "cc_efl_uniform",
+        "cc_efl_random_window", "cc_efl_dynamic",
+    }
     if strategy not in allowed:
         raise ValueError(f"strategy must be one of {sorted(allowed)}")
     if rounds < 1 or clients < 1:
@@ -410,6 +492,16 @@ def run_cifar_experiment(
     np.random.seed(seed)
     started_at = time.perf_counter()
     partitions = make_client_partitions(bundle.train_labels, clients, alpha=0.5, seed=seed)
+    capacity_candidates = _cifar_capacity_candidates(max_depth, widths)
+    capacity_tiers = np.arange(clients, dtype=np.int64) % len(capacity_candidates)
+    np.random.default_rng(seed + 73_021).shuffle(capacity_tiers)
+    capacity_tiers = [int(item) for item in capacity_tiers]
+    selection_tiers = (
+        [len(capacity_candidates) - 1] * clients
+        if strategy == "cc_efl_dynamic"
+        else capacity_tiers
+    )
+    window_rng = np.random.default_rng(seed + 91_237)
     model = CifarElasticCNN(bundle.num_classes, max_depth=max_depth, hidden_dim=widths[-1])
     global_state = state_to_numpy(model)
     history = []
@@ -419,7 +511,16 @@ def run_cifar_experiment(
         architectures = []
         losses = []
         for client_id, indices in enumerate(partitions):
-            architecture = _architecture_for_round(client_id, round_id, strategy, max_depth, widths)
+            architecture = _architecture_for_round(
+                client_id,
+                round_id,
+                strategy,
+                max_depth,
+                widths,
+                tier_assignments=capacity_tiers,
+                rotate_tiers=strategy == "cc_efl_dynamic",
+                window_rng=window_rng,
+            )
             local_model = build_cifar_subnet(
                 bundle.num_classes,
                 architecture.depth,
@@ -435,13 +536,19 @@ def run_cifar_experiment(
                 local_epochs,
                 ordered_dropout=strategy == "fjord",
                 ordered_widths=widths,
-                proximal_mu=1e-3 if strategy == "fedprox" else 0.0,
+                proximal_mu=(1e-3 if strategy in {
+                    "fedprox", "cc_efl", "cc_efl_uniform",
+                    "cc_efl_random_window", "cc_efl_dynamic",
+                } else 0.0),
             )
             updates.append(update)
             counts.append(len(indices))
             architectures.append(architecture)
             losses.append(loss)
-        capacity_weighting = strategy in {"elastic", "maxnet", "cc_efl"}
+        capacity_weighting = strategy in {
+            "elastic", "maxnet", "cc_efl", "cc_efl_no_prox",
+            "cc_efl_random_window", "cc_efl_dynamic",
+        }
         beta = 0.2 + 0.7 * 0.5 * (1.0 + np.cos(np.pi * round_id / max(rounds - 1, 1)))
         max_capacity = max(item.depth * item.width for item in architectures)
         priorities = [
@@ -473,15 +580,8 @@ def run_cifar_experiment(
                         "test_accuracy": None,
                     }
                 )
-        best_val = max(item["val_accuracy"] for item in candidates)
-        eligible = [item for item in candidates if item["val_accuracy"] >= best_val - 0.002]
-        best = min(eligible, key=lambda item: (item["flops"], item["parameters"]))
-        best = dict(best)
-        best["test_accuracy"] = _evaluate_cifar(
-            model,
-            bundle.test_dataset,
-            ClientArchitecture(best["depth"], best["width"], 0),
-            batch_size,
+        best = _select_cifar_models_for_capacities(
+            candidates, selection_tiers, capacity_candidates
         )
         history.append(
             {
@@ -508,10 +608,13 @@ def run_cifar_experiment(
                         for item in architectures
                     ])
                 ),
-                "selected_depth": best["depth"],
-                "selected_width": best["width"],
-                "selected_val_accuracy": best["val_accuracy"],
-                "selected_test_accuracy": best["test_accuracy"],
+                "selected_depth": best["selected_depth"],
+                "selected_width": best["selected_width"],
+                "selected_val_accuracy": best["selected_val_accuracy"],
+                "selected_models_by_capacity": best["selected_models_by_capacity"],
+                # Held-out test metrics are filled only after final training
+                # and validation-based model selection.
+                "selected_test_accuracy": None,
                 "active_architectures": [
                     {"depth": item.depth, "width": item.width, "offset": item.offset}
                     for item in architectures
@@ -536,7 +639,15 @@ def run_cifar_experiment(
                 }
             )
     final = dict(history[-1])
+    final_candidates = final["candidate_scores"]
     final["tier_scores"] = tier_scores
+    final_by_capacity = _select_cifar_models_for_capacities(
+        final_candidates,
+        selection_tiers,
+        capacity_candidates,
+        test_scores=tier_scores,
+    )
+    final.update(final_by_capacity)
     history[-1] = final
     return {
         "dataset": bundle.name,
@@ -544,10 +655,19 @@ def run_cifar_experiment(
         "seed": int(seed),
         "num_classes": bundle.num_classes,
         "clients": clients,
+        "client_capacity_tiers": capacity_tiers,
+        "capacity_schedule": "rotating" if strategy == "cc_efl_dynamic" else "fixed",
+        "aggregation_priority": "uniform" if strategy == "cc_efl_uniform" else "cosine-largest-tier",
+        "channel_window_policy": (
+            "random" if strategy == "cc_efl_random_window"
+            else "systematic-rolling" if strategy.startswith("cc_efl") or strategy == "fedrolex"
+            else "prefix"
+        ),
         "rounds": rounds,
         "strategy": strategy,
         "history": history,
         "final": final,
         "tier_scores": tier_scores,
+        **_parameter_coverage(history, global_state),
         "wall_clock_seconds": float(time.perf_counter() - started_at),
     }

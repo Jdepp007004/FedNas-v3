@@ -10,23 +10,66 @@
     "fjord",
     "fedrolex",
     "maxnet",
-    "scaffold",
-    "cc_efl"
+    "cc_efl",
+    "cc_efl_no_prox",
+    "cc_efl_uniform",
+    "cc_efl_random_window"
   ],
   "partition": {
     "type": "Dirichlet label skew",
     "alpha": "dataset-specific DatasetSpec.dirichlet_alpha",
     "seeded": true
   },
-  "selection": "validation metric only; smallest FLOP tier within 0.2 percentage points of validation best",
-  "test_set": "held out and evaluated only after selection",
+  "client_capacity_profiles": {
+    "profile_count": 3,
+    "tiers": [
+      "depth=1,width=smallest configured width",
+      "depth=max(1,floor(max_depth/2)),width=second configured width",
+      "depth=max_depth,width=second-largest configured width"
+    ],
+    "assignment": "Balanced tier IDs are shuffled once with seed+73021 and reused across paired strategies and every round; full supernet width is reserved for the FedAvg/FedProx/SCAFFOLD reference.",
+    "dynamic_capacity_diagnostic": "cc_efl_dynamic only; excluded from the fixed-device primary analysis."
+  },
+  "selection": "Validation metric only; for each fixed client capacity, select the smallest feasible FLOP tier within 0.2 percentage points of the best validation score.",
+  "test_set": "After final training, evaluate the pre-defined tier set once for final reporting. Never evaluate test metrics during training rounds.",
+  "matched_controls": {
+    "cc_efl_no_prox": "Remove FedProx while keeping other CC-EFL components.",
+    "cc_efl_uniform": "Replace largest-tier priorities with uniform aggregation weights.",
+    "cc_efl_random_window": "Keep the per-client capacity map and resource budget fixed; sample channel offsets with seed+91237 instead of systematic rolling."
+  },
+  "optimizer_matched_scaffold_study": {
+    "strategies": ["fedavg", "fedprox", "scaffold"],
+    "optimizer": "SGD with the same dataset learning rate and momentum=0.9 for all three strategies",
+    "seeds": [1, 2, 3, 4, 5],
+    "reason": "The primary comparison uses Adam; SCAFFOLD uses SGD control variates, so compare it separately against FedAvg and FedProx under matched SGD rather than mixing optimizer settings."
+  },
+  "exploratory_extensions": [
+    {
+      "strategy": "cc_efl_fjord",
+      "change": "Add FjORD-style ordered-width local self-distillation to CC-EFL while preserving fixed client capacities and rolling channel windows.",
+      "status": "Exploratory; retain only if paired multi-seed comparisons support it."
+    },
+    {
+      "strategy": "cc_efl_warmup_fjord",
+      "change": "Use prefix windows for the first 20% of rounds, then systematic rolling windows, with FjORD-style local self-distillation.",
+      "status": "Exploratory; motivated by the corrected Digits/Adult/Bank/HAR result pattern, not part of the primary preregistered matrix."
+    }
+  ],
+  "aggregation": {
+    "coordinate_update": "For each global parameter coordinate, use the sample-count and priority weighted mean over only clients that updated that coordinate; preserve the previous server coordinate if no client updated it.",
+    "largest_tier_priority": "beta_r=0.2+0.35*(1+cos(pi*r/max(rounds-1,1))); a largest active tier receives beta_r and all other tiers receive 1-beta_r.",
+    "window_offset": "For a fixed tier, offset=(round_id+client_id) mod (hidden_dim-width+1); every client visits every valid bounded window start once per full cycle."
+  },
   "resource_metrics": [
-    "trainable parameters",
-    "approximate multiply-add FLOPs",
-    "payload bytes",
-    "download bytes",
+    "active trainable parameters per client-round",
+    "approximate per-example forward FLOPs",
+    "selected deployed parameters per client capacity",
+    "selected deployed per-example forward FLOPs per client capacity",
+    "upload and download payload bytes per round and full run",
+    "wall-clock seconds",
     "active tier",
-    "participation rate"
+    "participation rate",
+    "parameter-coordinate coverage and update-frequency distribution"
   ],
   "security": {
     "secure_aggregation": "pairwise X25519 mask cancellation harness; no dropout recovery",

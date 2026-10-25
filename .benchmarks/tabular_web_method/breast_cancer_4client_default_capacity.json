@@ -1,0 +1,1221 @@
+{
+  "benchmark": "exact self-serve website budget-elastic tabular method",
+  "dataset": "Wisconsin Diagnostic Breast Cancer (scikit-learn bundled copy)",
+  "train_rows": 455,
+  "test_rows": 114,
+  "features": 30,
+  "classes": [
+    "benign",
+    "malignant"
+  ],
+  "non_iid_partition": "Dirichlet alpha=0.5, four clients, seed-specific; min 30 rows per client",
+  "host": {
+    "platform": "Windows-11-10.0.26200-SP0",
+    "processor": "Intel64 Family 6 Model 170 Stepping 4, GenuineIntel",
+    "logical_cpus_available": 18,
+    "ram_gib": 15.61,
+    "cuda_disabled": true
+  },
+  "device_profiles": [
+    {
+      "name": "edge-1t",
+      "logical_cpu_ids": [
+        0
+      ],
+      "cpu_threads": 1,
+      "dedicated_ram_gb": 0.5,
+      "available_ram_gb": 0.5,
+      "available_cpu_cores": 1,
+      "dedicated_cpu_cores": 1,
+      "gpu_available": false,
+      "resource_source": "benchmark profile; RAM not OS-limited"
+    },
+    {
+      "name": "low-2t",
+      "logical_cpu_ids": [
+        1,
+        2
+      ],
+      "cpu_threads": 2,
+      "dedicated_ram_gb": 1.0,
+      "available_ram_gb": 1.0,
+      "available_cpu_cores": 2,
+      "dedicated_cpu_cores": 2,
+      "gpu_available": false,
+      "resource_source": "benchmark profile; RAM not OS-limited"
+    },
+    {
+      "name": "mid-4t",
+      "logical_cpu_ids": [
+        3,
+        4,
+        5,
+        6
+      ],
+      "cpu_threads": 4,
+      "dedicated_ram_gb": 2.0,
+      "available_ram_gb": 2.0,
+      "available_cpu_cores": 4,
+      "dedicated_cpu_cores": 4,
+      "gpu_available": false,
+      "resource_source": "benchmark profile; RAM not OS-limited"
+    },
+    {
+      "name": "high-8t",
+      "logical_cpu_ids": [
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14
+      ],
+      "cpu_threads": 8,
+      "dedicated_ram_gb": 4.0,
+      "available_ram_gb": 4.0,
+      "available_cpu_cores": 8,
+      "dedicated_cpu_cores": 8,
+      "gpu_available": false,
+      "resource_source": "benchmark profile; RAM not OS-limited"
+    }
+  ],
+  "model_config": {
+    "input_dim": 512,
+    "max_depth": 3,
+    "max_width": 64,
+    "output_dim": 2
+  },
+  "settings": {
+    "seeds": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "rounds": 8,
+    "epochs": 3,
+    "max_depth": 3,
+    "max_width": 64
+  },
+  "limitations": [
+    "Four virtual clients are separate CPU-affinity-limited processes on one host, not four physical devices.",
+    "RAM values are resource-planner inputs; per-process memory limits were not imposed.",
+    "Round wall time excludes website, encryption, HTTP, and network overhead.",
+    "The bundled small breast-cancer dataset is a functional clinical tabular workload, not evidence for LLM-scale training."
+  ],
+  "runs": [
+    {
+      "seed": 1,
+      "method": "fedavg_full",
+      "rounds": 8,
+      "local_epochs": 3,
+      "wall_seconds_rounds": 6.995872399769723,
+      "median_round_seconds": 0.06813029991462827,
+      "mean_local_seconds_per_round_by_client": [
+        0.6368139125406742,
+        0.7256320250453427,
+        0.7276324374834076,
+        0.8665017749299295
+      ],
+      "assigned_depth_width": [
+        {
+          "depth": 3,
+          "width": 64
+        },
+        {
+          "depth": 3,
+          "width": 64
+        },
+        {
+          "depth": 3,
+          "width": 64
+        },
+        {
+          "depth": 3,
+          "width": 64
+        }
+      ],
+      "active_parameters_per_client": [
+        41282,
+        41282,
+        41282,
+        41282
+      ],
+      "fp32_download_bytes_per_client": [
+        165128,
+        165128,
+        165128,
+        165128
+      ],
+      "coordinate_coverage": 1.0,
+      "capacity_selected_test_accuracy": 0.9035087719298246,
+      "capacity_selected_test_macro_f1": 0.8891736632788334,
+      "per_client_test_metrics": [
+        {
+          "accuracy": 0.9035087719298246,
+          "macro_f1": 0.8891736632788334
+        },
+        {
+          "accuracy": 0.9035087719298246,
+          "macro_f1": 0.8891736632788334
+        },
+        {
+          "accuracy": 0.9035087719298246,
+          "macro_f1": 0.8891736632788334
+        },
+        {
+          "accuracy": 0.9035087719298246,
+          "macro_f1": 0.8891736632788334
+        }
+      ],
+      "full_global_test_metrics": {
+        "accuracy": 0.9035087719298246,
+        "macro_f1": 0.8891736632788334
+      },
+      "worker_ready": [
+        {
+          "ready": true,
+          "affinity": [
+            0
+          ],
+          "local_rows": 191
+        },
+        {
+          "ready": true,
+          "affinity": [
+            1,
+            2
+          ],
+          "local_rows": 111
+        },
+        {
+          "ready": true,
+          "affinity": [
+            3,
+            4,
+            5,
+            6
+          ],
+          "local_rows": 47
+        },
+        {
+          "ready": true,
+          "affinity": [
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14
+          ],
+          "local_rows": 106
+        }
+      ],
+      "elapsed_including_worker_startup_seconds": 47.12170029990375
+    },
+    {
+      "seed": 1,
+      "method": "website_budget_elastic",
+      "rounds": 8,
+      "local_epochs": 3,
+      "wall_seconds_rounds": 6.6144120008684695,
+      "median_round_seconds": 0.06453365017659962,
+      "mean_local_seconds_per_round_by_client": [
+        0.5818771625054069,
+        0.7082839750219136,
+        0.7143536750227213,
+        0.8183759874664247
+      ],
+      "assigned_depth_width": [
+        {
+          "depth": 2,
+          "width": 16
+        },
+        {
+          "depth": 2,
+          "width": 16
+        },
+        {
+          "depth": 2,
+          "width": 32
+        },
+        {
+          "depth": 3,
+          "width": 64
+        }
+      ],
+      "active_parameters_per_client": [
+        8514,
+        8514,
+        17538,
+        41282
+      ],
+      "fp32_download_bytes_per_client": [
+        34056,
+        34056,
+        70152,
+        165128
+      ],
+      "coordinate_coverage": 1.0,
+      "capacity_selected_test_accuracy": 0.8355263157894737,
+      "capacity_selected_test_macro_f1": 0.7638160369147338,
+      "per_client_test_metrics": [
+        {
+          "accuracy": 0.8947368421052632,
+          "macro_f1": 0.8782051282051282
+        },
+        {
+          "accuracy": 0.8947368421052632,
+          "macro_f1": 0.8782051282051282
+        },
+        {
+          "accuracy": 0.9210526315789473,
+          "macro_f1": 0.9117571170551303
+        },
+        {
+          "accuracy": 0.631578947368421,
+          "macro_f1": 0.3870967741935484
+        }
+      ],
+      "full_global_test_metrics": {
+        "accuracy": 0.631578947368421,
+        "macro_f1": 0.3870967741935484
+      },
+      "worker_ready": [
+        {
+          "ready": true,
+          "affinity": [
+            0
+          ],
+          "local_rows": 191
+        },
+        {
+          "ready": true,
+          "affinity": [
+            1,
+            2
+          ],
+          "local_rows": 111
+        },
+        {
+          "ready": true,
+          "affinity": [
+            3,
+            4,
+            5,
+            6
+          ],
+          "local_rows": 47
+        },
+        {
+          "ready": true,
+          "affinity": [
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14
+          ],
+          "local_rows": 106
+        }
+      ],
+      "elapsed_including_worker_startup_seconds": 41.37927869986743
+    },
+    {
+      "seed": 2,
+      "method": "fedavg_full",
+      "rounds": 8,
+      "local_epochs": 3,
+      "wall_seconds_rounds": 6.3069293992593884,
+      "median_round_seconds": 0.049844450084492564,
+      "mean_local_seconds_per_round_by_client": [
+        0.6195319999824278,
+        0.6979324750136584,
+        0.6945967124775052,
+        0.7721748875337653
+      ],
+      "assigned_depth_width": [
+        {
+          "depth": 3,
+          "width": 64
+        },
+        {
+          "depth": 3,
+          "width": 64
+        },
+        {
+          "depth": 3,
+          "width": 64
+        },
+        {
+          "depth": 3,
+          "width": 64
+        }
+      ],
+      "active_parameters_per_client": [
+        41282,
+        41282,
+        41282,
+        41282
+      ],
+      "fp32_download_bytes_per_client": [
+        165128,
+        165128,
+        165128,
+        165128
+      ],
+      "coordinate_coverage": 1.0,
+      "capacity_selected_test_accuracy": 0.8157894736842105,
+      "capacity_selected_test_macro_f1": 0.7696969696969697,
+      "per_client_test_metrics": [
+        {
+          "accuracy": 0.8157894736842105,
+          "macro_f1": 0.7696969696969697
+        },
+        {
+          "accuracy": 0.8157894736842105,
+          "macro_f1": 0.7696969696969697
+        },
+        {
+          "accuracy": 0.8157894736842105,
+          "macro_f1": 0.7696969696969697
+        },
+        {
+          "accuracy": 0.8157894736842105,
+          "macro_f1": 0.7696969696969697
+        }
+      ],
+      "full_global_test_metrics": {
+        "accuracy": 0.8157894736842105,
+        "macro_f1": 0.7696969696969697
+      },
+      "worker_ready": [
+        {
+          "ready": true,
+          "affinity": [
+            0
+          ],
+          "local_rows": 191
+        },
+        {
+          "ready": true,
+          "affinity": [
+            1,
+            2
+          ],
+          "local_rows": 111
+        },
+        {
+          "ready": true,
+          "affinity": [
+            3,
+            4,
+            5,
+            6
+          ],
+          "local_rows": 47
+        },
+        {
+          "ready": true,
+          "affinity": [
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14
+          ],
+          "local_rows": 106
+        }
+      ],
+      "elapsed_including_worker_startup_seconds": 43.86660030018538
+    },
+    {
+      "seed": 2,
+      "method": "website_budget_elastic",
+      "rounds": 8,
+      "local_epochs": 3,
+      "wall_seconds_rounds": 6.349119000136852,
+      "median_round_seconds": 0.058989649871364236,
+      "mean_local_seconds_per_round_by_client": [
+        0.5944870250532404,
+        0.6923965750029311,
+        0.7082485125283711,
+        0.7772927250480279
+      ],
+      "assigned_depth_width": [
+        {
+          "depth": 2,
+          "width": 16
+        },
+        {
+          "depth": 2,
+          "width": 16
+        },
+        {
+          "depth": 2,
+          "width": 32
+        },
+        {
+          "depth": 3,
+          "width": 64
+        }
+      ],
+      "active_parameters_per_client": [
+        8514,
+        8514,
+        17538,
+        41282
+      ],
+      "fp32_download_bytes_per_client": [
+        34056,
+        34056,
+        70152,
+        165128
+      ],
+      "coordinate_coverage": 1.0,
+      "capacity_selected_test_accuracy": 0.6447368421052632,
+      "capacity_selected_test_macro_f1": 0.4236030319055174,
+      "per_client_test_metrics": [
+        {
+          "accuracy": 0.6578947368421053,
+          "macro_f1": 0.4601092896174863
+        },
+        {
+          "accuracy": 0.6578947368421053,
+          "macro_f1": 0.4601092896174863
+        },
+        {
+          "accuracy": 0.631578947368421,
+          "macro_f1": 0.3870967741935484
+        },
+        {
+          "accuracy": 0.631578947368421,
+          "macro_f1": 0.3870967741935484
+        }
+      ],
+      "full_global_test_metrics": {
+        "accuracy": 0.631578947368421,
+        "macro_f1": 0.3870967741935484
+      },
+      "worker_ready": [
+        {
+          "ready": true,
+          "affinity": [
+            0
+          ],
+          "local_rows": 191
+        },
+        {
+          "ready": true,
+          "affinity": [
+            1,
+            2
+          ],
+          "local_rows": 111
+        },
+        {
+          "ready": true,
+          "affinity": [
+            3,
+            4,
+            5,
+            6
+          ],
+          "local_rows": 47
+        },
+        {
+          "ready": true,
+          "affinity": [
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14
+          ],
+          "local_rows": 106
+        }
+      ],
+      "elapsed_including_worker_startup_seconds": 37.00351790012792
+    },
+    {
+      "seed": 3,
+      "method": "fedavg_full",
+      "rounds": 8,
+      "local_epochs": 3,
+      "wall_seconds_rounds": 6.147731400560588,
+      "median_round_seconds": 0.058002700097858906,
+      "mean_local_seconds_per_round_by_client": [
+        0.553761399933137,
+        0.6024315623799339,
+        0.575515250035096,
+        0.7599525249097496
+      ],
+      "assigned_depth_width": [
+        {
+          "depth": 3,
+          "width": 64
+        },
+        {
+          "depth": 3,
+          "width": 64
+        },
+        {
+          "depth": 3,
+          "width": 64
+        },
+        {
+          "depth": 3,
+          "width": 64
+        }
+      ],
+      "active_parameters_per_client": [
+        41282,
+        41282,
+        41282,
+        41282
+      ],
+      "fp32_download_bytes_per_client": [
+        165128,
+        165128,
+        165128,
+        165128
+      ],
+      "coordinate_coverage": 1.0,
+      "capacity_selected_test_accuracy": 0.8333333333333334,
+      "capacity_selected_test_macro_f1": 0.7955639452571968,
+      "per_client_test_metrics": [
+        {
+          "accuracy": 0.8333333333333334,
+          "macro_f1": 0.7955639452571968
+        },
+        {
+          "accuracy": 0.8333333333333334,
+          "macro_f1": 0.7955639452571968
+        },
+        {
+          "accuracy": 0.8333333333333334,
+          "macro_f1": 0.7955639452571968
+        },
+        {
+          "accuracy": 0.8333333333333334,
+          "macro_f1": 0.7955639452571968
+        }
+      ],
+      "full_global_test_metrics": {
+        "accuracy": 0.8333333333333334,
+        "macro_f1": 0.7955639452571968
+      },
+      "worker_ready": [
+        {
+          "ready": true,
+          "affinity": [
+            0
+          ],
+          "local_rows": 191
+        },
+        {
+          "ready": true,
+          "affinity": [
+            1,
+            2
+          ],
+          "local_rows": 111
+        },
+        {
+          "ready": true,
+          "affinity": [
+            3,
+            4,
+            5,
+            6
+          ],
+          "local_rows": 47
+        },
+        {
+          "ready": true,
+          "affinity": [
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14
+          ],
+          "local_rows": 106
+        }
+      ],
+      "elapsed_including_worker_startup_seconds": 38.866339299827814
+    },
+    {
+      "seed": 3,
+      "method": "website_budget_elastic",
+      "rounds": 8,
+      "local_epochs": 3,
+      "wall_seconds_rounds": 6.031515299342573,
+      "median_round_seconds": 0.05540949967689812,
+      "mean_local_seconds_per_round_by_client": [
+        0.6066795749939047,
+        0.6592881250544451,
+        0.6565659625339322,
+        0.7473605374689214
+      ],
+      "assigned_depth_width": [
+        {
+          "depth": 2,
+          "width": 16
+        },
+        {
+          "depth": 2,
+          "width": 16
+        },
+        {
+          "depth": 2,
+          "width": 32
+        },
+        {
+          "depth": 3,
+          "width": 64
+        }
+      ],
+      "active_parameters_per_client": [
+        8514,
+        8514,
+        17538,
+        41282
+      ],
+      "fp32_download_bytes_per_client": [
+        34056,
+        34056,
+        70152,
+        165128
+      ],
+      "coordinate_coverage": 1.0,
+      "capacity_selected_test_accuracy": 0.6622807017543859,
+      "capacity_selected_test_macro_f1": 0.46609427696109984,
+      "per_client_test_metrics": [
+        {
+          "accuracy": 0.6929824561403509,
+          "macro_f1": 0.5450917797286512
+        },
+        {
+          "accuracy": 0.6929824561403509,
+          "macro_f1": 0.5450917797286512
+        },
+        {
+          "accuracy": 0.631578947368421,
+          "macro_f1": 0.3870967741935484
+        },
+        {
+          "accuracy": 0.631578947368421,
+          "macro_f1": 0.3870967741935484
+        }
+      ],
+      "full_global_test_metrics": {
+        "accuracy": 0.631578947368421,
+        "macro_f1": 0.3870967741935484
+      },
+      "worker_ready": [
+        {
+          "ready": true,
+          "affinity": [
+            0
+          ],
+          "local_rows": 191
+        },
+        {
+          "ready": true,
+          "affinity": [
+            1,
+            2
+          ],
+          "local_rows": 111
+        },
+        {
+          "ready": true,
+          "affinity": [
+            3,
+            4,
+            5,
+            6
+          ],
+          "local_rows": 47
+        },
+        {
+          "ready": true,
+          "affinity": [
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14
+          ],
+          "local_rows": 106
+        }
+      ],
+      "elapsed_including_worker_startup_seconds": 37.140455999877304
+    },
+    {
+      "seed": 4,
+      "method": "fedavg_full",
+      "rounds": 8,
+      "local_epochs": 3,
+      "wall_seconds_rounds": 8.13405649876222,
+      "median_round_seconds": 0.07599354977719486,
+      "mean_local_seconds_per_round_by_client": [
+        0.693855274876114,
+        0.8902285374933854,
+        0.9177038125344552,
+        0.9909765625488944
+      ],
+      "assigned_depth_width": [
+        {
+          "depth": 3,
+          "width": 64
+        },
+        {
+          "depth": 3,
+          "width": 64
+        },
+        {
+          "depth": 3,
+          "width": 64
+        },
+        {
+          "depth": 3,
+          "width": 64
+        }
+      ],
+      "active_parameters_per_client": [
+        41282,
+        41282,
+        41282,
+        41282
+      ],
+      "fp32_download_bytes_per_client": [
+        165128,
+        165128,
+        165128,
+        165128
+      ],
+      "coordinate_coverage": 1.0,
+      "capacity_selected_test_accuracy": 0.868421052631579,
+      "capacity_selected_test_macro_f1": 0.8441345365053323,
+      "per_client_test_metrics": [
+        {
+          "accuracy": 0.868421052631579,
+          "macro_f1": 0.8441345365053323
+        },
+        {
+          "accuracy": 0.868421052631579,
+          "macro_f1": 0.8441345365053323
+        },
+        {
+          "accuracy": 0.868421052631579,
+          "macro_f1": 0.8441345365053323
+        },
+        {
+          "accuracy": 0.868421052631579,
+          "macro_f1": 0.8441345365053323
+        }
+      ],
+      "full_global_test_metrics": {
+        "accuracy": 0.868421052631579,
+        "macro_f1": 0.8441345365053323
+      },
+      "worker_ready": [
+        {
+          "ready": true,
+          "affinity": [
+            0
+          ],
+          "local_rows": 191
+        },
+        {
+          "ready": true,
+          "affinity": [
+            1,
+            2
+          ],
+          "local_rows": 111
+        },
+        {
+          "ready": true,
+          "affinity": [
+            3,
+            4,
+            5,
+            6
+          ],
+          "local_rows": 47
+        },
+        {
+          "ready": true,
+          "affinity": [
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14
+          ],
+          "local_rows": 106
+        }
+      ],
+      "elapsed_including_worker_startup_seconds": 51.235116000287235
+    },
+    {
+      "seed": 4,
+      "method": "website_budget_elastic",
+      "rounds": 8,
+      "local_epochs": 3,
+      "wall_seconds_rounds": 5.813865299336612,
+      "median_round_seconds": 0.05486415000632405,
+      "mean_local_seconds_per_round_by_client": [
+        0.5126894625136629,
+        0.6172848250716925,
+        0.6346989624435082,
+        0.7184576374129392
+      ],
+      "assigned_depth_width": [
+        {
+          "depth": 2,
+          "width": 16
+        },
+        {
+          "depth": 2,
+          "width": 16
+        },
+        {
+          "depth": 2,
+          "width": 32
+        },
+        {
+          "depth": 3,
+          "width": 64
+        }
+      ],
+      "active_parameters_per_client": [
+        8514,
+        8514,
+        17538,
+        41282
+      ],
+      "fp32_download_bytes_per_client": [
+        34056,
+        34056,
+        70152,
+        165128
+      ],
+      "coordinate_coverage": 1.0,
+      "capacity_selected_test_accuracy": 0.8048245614035088,
+      "capacity_selected_test_macro_f1": 0.7224064171240681,
+      "per_client_test_metrics": [
+        {
+          "accuracy": 0.8947368421052632,
+          "macro_f1": 0.87995787995788
+        },
+        {
+          "accuracy": 0.8947368421052632,
+          "macro_f1": 0.87995787995788
+        },
+        {
+          "accuracy": 0.7982456140350878,
+          "macro_f1": 0.7426131343869637
+        },
+        {
+          "accuracy": 0.631578947368421,
+          "macro_f1": 0.3870967741935484
+        }
+      ],
+      "full_global_test_metrics": {
+        "accuracy": 0.631578947368421,
+        "macro_f1": 0.3870967741935484
+      },
+      "worker_ready": [
+        {
+          "ready": true,
+          "affinity": [
+            0
+          ],
+          "local_rows": 191
+        },
+        {
+          "ready": true,
+          "affinity": [
+            1,
+            2
+          ],
+          "local_rows": 111
+        },
+        {
+          "ready": true,
+          "affinity": [
+            3,
+            4,
+            5,
+            6
+          ],
+          "local_rows": 47
+        },
+        {
+          "ready": true,
+          "affinity": [
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14
+          ],
+          "local_rows": 106
+        }
+      ],
+      "elapsed_including_worker_startup_seconds": 40.44451219961047
+    },
+    {
+      "seed": 5,
+      "method": "fedavg_full",
+      "rounds": 8,
+      "local_epochs": 3,
+      "wall_seconds_rounds": 6.849139299243689,
+      "median_round_seconds": 0.06208489974960685,
+      "mean_local_seconds_per_round_by_client": [
+        0.5879246250260621,
+        0.7743395249708556,
+        0.7485904750647023,
+        0.8480910249636509
+      ],
+      "assigned_depth_width": [
+        {
+          "depth": 3,
+          "width": 64
+        },
+        {
+          "depth": 3,
+          "width": 64
+        },
+        {
+          "depth": 3,
+          "width": 64
+        },
+        {
+          "depth": 3,
+          "width": 64
+        }
+      ],
+      "active_parameters_per_client": [
+        41282,
+        41282,
+        41282,
+        41282
+      ],
+      "fp32_download_bytes_per_client": [
+        165128,
+        165128,
+        165128,
+        165128
+      ],
+      "coordinate_coverage": 1.0,
+      "capacity_selected_test_accuracy": 0.9298245614035088,
+      "capacity_selected_test_macro_f1": 0.9210526315789473,
+      "per_client_test_metrics": [
+        {
+          "accuracy": 0.9298245614035088,
+          "macro_f1": 0.9210526315789473
+        },
+        {
+          "accuracy": 0.9298245614035088,
+          "macro_f1": 0.9210526315789473
+        },
+        {
+          "accuracy": 0.9298245614035088,
+          "macro_f1": 0.9210526315789473
+        },
+        {
+          "accuracy": 0.9298245614035088,
+          "macro_f1": 0.9210526315789473
+        }
+      ],
+      "full_global_test_metrics": {
+        "accuracy": 0.9298245614035088,
+        "macro_f1": 0.9210526315789473
+      },
+      "worker_ready": [
+        {
+          "ready": true,
+          "affinity": [
+            0
+          ],
+          "local_rows": 38
+        },
+        {
+          "ready": true,
+          "affinity": [
+            1,
+            2
+          ],
+          "local_rows": 232
+        },
+        {
+          "ready": true,
+          "affinity": [
+            3,
+            4,
+            5,
+            6
+          ],
+          "local_rows": 34
+        },
+        {
+          "ready": true,
+          "affinity": [
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14
+          ],
+          "local_rows": 151
+        }
+      ],
+      "elapsed_including_worker_startup_seconds": 42.32299950020388
+    },
+    {
+      "seed": 5,
+      "method": "website_budget_elastic",
+      "rounds": 8,
+      "local_epochs": 3,
+      "wall_seconds_rounds": 8.306510998867452,
+      "median_round_seconds": 0.0930257998406887,
+      "mean_local_seconds_per_round_by_client": [
+        0.7045870124711655,
+        0.9557444999809377,
+        0.9366352749639191,
+        1.0309205250814557
+      ],
+      "assigned_depth_width": [
+        {
+          "depth": 2,
+          "width": 16
+        },
+        {
+          "depth": 2,
+          "width": 16
+        },
+        {
+          "depth": 2,
+          "width": 32
+        },
+        {
+          "depth": 3,
+          "width": 64
+        }
+      ],
+      "active_parameters_per_client": [
+        8514,
+        8514,
+        17538,
+        41282
+      ],
+      "fp32_download_bytes_per_client": [
+        34056,
+        34056,
+        70152,
+        165128
+      ],
+      "coordinate_coverage": 1.0,
+      "capacity_selected_test_accuracy": 0.7785087719298245,
+      "capacity_selected_test_macro_f1": 0.6874607970733827,
+      "per_client_test_metrics": [
+        {
+          "accuracy": 0.8157894736842105,
+          "macro_f1": 0.7696969696969697
+        },
+        {
+          "accuracy": 0.8157894736842105,
+          "macro_f1": 0.7696969696969697
+        },
+        {
+          "accuracy": 0.8508771929824561,
+          "macro_f1": 0.8233524747060432
+        },
+        {
+          "accuracy": 0.631578947368421,
+          "macro_f1": 0.3870967741935484
+        }
+      ],
+      "full_global_test_metrics": {
+        "accuracy": 0.631578947368421,
+        "macro_f1": 0.3870967741935484
+      },
+      "worker_ready": [
+        {
+          "ready": true,
+          "affinity": [
+            0
+          ],
+          "local_rows": 38
+        },
+        {
+          "ready": true,
+          "affinity": [
+            1,
+            2
+          ],
+          "local_rows": 232
+        },
+        {
+          "ready": true,
+          "affinity": [
+            3,
+            4,
+            5,
+            6
+          ],
+          "local_rows": 34
+        },
+        {
+          "ready": true,
+          "affinity": [
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14
+          ],
+          "local_rows": 151
+        }
+      ],
+      "elapsed_including_worker_startup_seconds": 52.70172580005601
+    }
+  ]
+}

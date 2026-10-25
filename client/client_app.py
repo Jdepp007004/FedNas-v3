@@ -71,8 +71,19 @@ def main():
     dedicated_ram = min(available_ram, float(args.dedicated_ram or max(0.5, available_ram * 0.5)))
     dedicated_cores = min(available_cores, int(args.dedicated_cores or max(1, (available_cores + 1) // 2)))
     gpu_available = bool(args.gpu)
+    try:
+        import torch
+        torch.set_num_threads(dedicated_cores)
+        try:
+            torch.set_num_interop_threads(max(1, min(dedicated_cores, 4)))
+        except RuntimeError:
+            # PyTorch allows this setting only before its inter-op pool starts.
+            pass
+        print(f"[*] CPU contribution capped at {dedicated_cores} PyTorch worker thread(s).")
+    except Exception as e:
+        print(f"[!] Could not apply the CPU thread cap: {e}")
 
-    client = APIClient(args.server)
+    client = APIClient(args.server, token=os.environ.get("FL_CLIENT_TOKEN") or None)
 
     # ── Connectivity check ────────────────────────────────────────────────────
     print(f"[*] Connecting to server: {args.server}")
@@ -83,38 +94,57 @@ def main():
         print(f"[!] Cannot reach server: {e}")
         sys.exit(1)
 
-    # ── Passwordless participant session ─────────────────────────────────────
-    print(f"[*] Joining as {args.name}…")
-    try:
-        client.guest_login(args.name)
-        print(f"[+] Temporary participant session created for {args.name}")
-    except Exception as e:
-        print(f"[!] Could not create participant session: {e}")
-        sys.exit(1)
-
-    # The default project is selected automatically.  ``--proj`` remains an
-    # internal/backwards-compatible override but is not needed by teammates.
-    if not args.proj:
+    # Browser-launched workers reuse the browser's guest identity so the host
+    # sees one participant record, not a second same-name request. Direct CLI
+    # workers create their own passwordless participant session.
+    if client.token:
+        print(f"[+] Reusing the selected workspace session for {args.name}")
+    else:
+        print(f"[*] Joining as {args.name}…")
         try:
-            projects = client.list_projects()
+            client.guest_login(args.name)
+            print(f"[+] Temporary participant session created for {args.name}")
+        except Exception as e:
+            print(f"[!] Could not create participant session: {e}")
+            sys.exit(1)
+
+    # The browser-selected workspace is passed through --proj.  Direct CLI
+    # users still get the first open project as a convenient default.
+    try:
+        projects = client.list_projects()
+        if args.proj:
+            project = next((item for item in projects if item.get("proj_id") == args.proj), None)
+            if project is None:
+                raise RuntimeError(f"Workspace {args.proj} is not open or is not visible to this participant.")
+        else:
             project = next((item for item in projects if item.get("accepting_clients", True)), None)
             if project is None:
                 raise RuntimeError("The host has no project accepting clients yet.")
             args.proj = project["proj_id"]
             print(f"[+] Project selected automatically: {project.get('name', args.proj)}")
-        except Exception as e:
-            print(f"[!] Could not find an open project: {e}")
-            sys.exit(1)
+    except Exception as e:
+        print(f"[!] Could not find the selected workspace: {e}")
+        sys.exit(1)
+    model_family = project.get("model_family", "clinical_multitask")
 
     # ── Schema Validation ─────────────────────────────────────────────────────
     print(f"[*] Validating CSV: {args.csv}")
     import pandas as pd
     df_check = pd.read_csv(args.csv, low_memory=False)
-    val_result = validate_schema(df_check, SERVER_SCHEMA)
-    print(format_validation_report(val_result))
-    if not val_result.passed:
-        print("[!] Schema validation failed. Please fix errors before joining.")
-        sys.exit(1)
+    if model_family == "elastic_tabular":
+        from tabular_fl import validate_frame
+        try:
+            local_dataset_info = validate_frame(df_check, project["task_config"])
+            print(f"[+] Tabular CSV ready: {local_dataset_info['rows']} usable rows, shared {local_dataset_info['features']}-dimensional feature map")
+        except Exception as e:
+            print(f"[!] CSV does not match this workspace: {e}")
+            sys.exit(1)
+    else:
+        val_result = validate_schema(df_check, SERVER_SCHEMA)
+        print(format_validation_report(val_result))
+        if not val_result.passed:
+            print("[!] Schema validation failed. Please fix errors before joining.")
+            sys.exit(1)
 
     # ── Join Project ──────────────────────────────────────────────────────────
     hw_profile = {
@@ -131,6 +161,9 @@ def main():
         join_resp = client.join_project(args.proj, hw_profile)
         active_depth = join_resp.get("recommended_depth", 4)
         schema = join_resp.get("required_schema", SERVER_SCHEMA)
+        model_family = join_resp.get("model_family", model_family)
+        task_config = join_resp.get("task_config", project.get("task_config", {}))
+        model_config = join_resp.get("model_config", project.get("model_config", MODEL_CONFIG))
         print(f"[+] Join request submitted. Recommended depth: {active_depth}")
         print(f"[*] Status: {join_resp.get('status', '?')} — waiting for admin approval…")
         client.update_resources(args.proj, hw_profile)
@@ -143,6 +176,7 @@ def main():
             "size_bytes": os.path.getsize(args.csv),
             "sha256": dataset_digest,
         })
+        del df_check
     except Exception as e:
         print(f"[!] Join failed: {e}")
         sys.exit(1)
@@ -169,8 +203,15 @@ def main():
 
     print("[+] Approved! Starting federated training loop…")
 
-    # ── Build model ───────────────────────────────────────────────────────────
-    supernet = Supernet(**MODEL_CONFIG)
+    # ── Build model and prepare local data ────────────────────────────────────
+    if model_family == "elastic_tabular":
+        from tabular_fl import build_loaders as build_tabular_loaders, train_client_round
+        tabular_loaders = build_tabular_loaders(args.csv, task_config)
+        supernet = None
+        print(f"[+] Budget-elastic model ready: {model_config['max_depth']} layers × {model_config['max_width']} max width")
+    else:
+        supernet = Supernet(**MODEL_CONFIG)
+        tabular_loaders = None
 
     # ── Init visualizer ───────────────────────────────────────────────────────
     fig, axes = None, None
@@ -192,27 +233,35 @@ def main():
         print("[*] Fetching global model…")
         model_data = client.fetch_global_model(args.proj)
         current_round = model_data["round"]
+        if current_round >= int(model_data.get("max_rounds", project.get("max_rounds", 20))):
+            print(f"[+] Workspace training is complete at round {current_round}.")
+            break
         active_depth = model_data.get("active_depth", active_depth)
         global_weights = model_data["weights"]
         print(f"[+] Round {current_round} | Active depth: {active_depth}")
 
-        # R2: Load global weights
-        load_global_weights(supernet, global_weights, strict=False)
-
-        # R3: Load & preprocess data
-        print("[*] Preparing data loaders…")
-        train_loader, val_loader = build_dataloaders_from_csv(
-            args.csv, schema, batch_size=DEFAULT_BATCH_SIZE
-        )
-
-        # R4: Local training
-        print("[*] Starting local training…")
-        cfg = TrainConfig(active_depth=active_depth)
-        result = run_local_training(supernet, (train_loader, val_loader), cfg, axes=axes)
-        print(f"[+] Training done | Loss: {result['metrics']['loss']:.4f} | "
-              f"RMSE: {result['metrics']['val_rmse']:.4f} | "
-              f"ToxAcc: {result['metrics']['val_acc_tox']:.4f} | "
-              f"AUC: {result['metrics']['val_auc']:.4f}")
+        # R2/R3/R4: Load the shared model, prepare local data, and train.
+        active_width = int(model_data.get("active_width", model_config.get("max_width", MODEL_CONFIG["hidden_dim"])))
+        print(f"[*] Starting local training | depth {active_depth}, width {active_width}…")
+        if model_family == "elastic_tabular":
+            result = train_client_round(
+                args.csv, task_config, model_config, global_weights,
+                active_depth, active_width, data_loaders=tabular_loaders,
+            )
+            print(f"[+] Training done | Loss: {result['metrics']['local_loss']:.4f} | "
+                  f"Validation: {result['metrics']}")
+        else:
+            load_global_weights(supernet, global_weights, strict=False)
+            print("[*] Preparing data loaders…")
+            train_loader, val_loader = build_dataloaders_from_csv(
+                args.csv, schema, batch_size=DEFAULT_BATCH_SIZE
+            )
+            cfg = TrainConfig(active_depth=active_depth)
+            result = run_local_training(supernet, (train_loader, val_loader), cfg, axes=axes)
+            print(f"[+] Training done | Loss: {result['metrics']['loss']:.4f} | "
+                  f"RMSE: {result['metrics']['val_rmse']:.4f} | "
+                  f"ToxAcc: {result['metrics']['val_acc_tox']:.4f} | "
+                  f"AUC: {result['metrics']['val_auc']:.4f}")
 
         # R6: Post update
         print("[*] Posting model update to server…")
@@ -223,6 +272,7 @@ def main():
             metrics=result["metrics"],
             round_id=current_round,
             active_depth=active_depth,
+            active_width=active_width,
         )
         print(f"[+] Update received. Clients submitted: "
               f"{post_resp.get('clients_submitted')}/{post_resp.get('clients_expected')} | "

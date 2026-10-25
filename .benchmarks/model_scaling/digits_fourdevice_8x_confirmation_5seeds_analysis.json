@@ -1,0 +1,440 @@
+{
+  "source": ".benchmarks/model_scaling/digits_fourdevice_8x_confirmation_5seeds.json",
+  "dataset": "digits",
+  "scale_factor": 8,
+  "rounds": 8,
+  "run_count": 15,
+  "summary": {
+    "fedavg": {
+      "seeds": 5,
+      "capacity_selected_macro_f1": {
+        "n": 5,
+        "mean": 0.289610285523891,
+        "std": 0.03561727633083588,
+        "ci95_low": 0.24539268566140665,
+        "ci95_high": 0.33382788538637537
+      },
+      "capacity_selected_accuracy": {
+        "n": 5,
+        "mean": 0.3391111111111111,
+        "std": 0.03898717737923585,
+        "ci95_low": 0.29070989724203544,
+        "ci95_high": 0.38751232498018673
+      },
+      "full_supernet_macro_f1": {
+        "n": 5,
+        "mean": 0.9640642549676033,
+        "std": 0.00480389992976476,
+        "ci95_low": 0.9581003816242097,
+        "ci95_high": 0.9700281283109968
+      },
+      "full_supernet_accuracy": {
+        "n": 5,
+        "mean": 0.9644444444444445,
+        "std": 0.004444444444444473,
+        "ci95_low": 0.958926822483965,
+        "ci95_high": 0.9699620664049241
+      },
+      "median_simulation_seconds": 11.98087860038504,
+      "mean_active_client_parameters": 830474.0,
+      "mean_selected_deployed_parameters": 3670.0,
+      "coordinate_coverage": 1.0
+    },
+    "heterofl": {
+      "seeds": 5,
+      "capacity_selected_macro_f1": {
+        "n": 5,
+        "mean": 0.7592449594010697,
+        "std": 0.04691898136978943,
+        "ci95_low": 0.7009966889579822,
+        "ci95_high": 0.8174932298441573
+      },
+      "capacity_selected_accuracy": {
+        "n": 5,
+        "mean": 0.7924444444444444,
+        "std": 0.028678722701725525,
+        "ci95_low": 0.7568408156544975,
+        "ci95_high": 0.8280480732343913
+      },
+      "full_supernet_macro_f1": {
+        "n": 5,
+        "mean": 0.6600425712573635,
+        "std": 0.07411656828424905,
+        "ci95_low": 0.5680294501772399,
+        "ci95_high": 0.7520556923374871
+      },
+      "full_supernet_accuracy": {
+        "n": 5,
+        "mean": 0.696,
+        "std": 0.057141798932000616,
+        "ci95_low": 0.6250604599540853,
+        "ci95_high": 0.7669395400459146
+      },
+      "median_simulation_seconds": 5.853220900055021,
+      "mean_active_client_parameters": 4282.0,
+      "mean_selected_deployed_parameters": 2879.6,
+      "coordinate_coverage": 0.013305654361244302
+    },
+    "fjord": {
+      "seeds": 5,
+      "capacity_selected_macro_f1": {
+        "n": 5,
+        "mean": 0.8099617896035418,
+        "std": 0.05430520698890781,
+        "ci95_low": 0.742543779007206,
+        "ci95_high": 0.8773798001998776
+      },
+      "capacity_selected_accuracy": {
+        "n": 5,
+        "mean": 0.8320000000000001,
+        "std": 0.04019550985303805,
+        "ci95_low": 0.7820986837274968,
+        "ci95_high": 0.8819013162725033
+      },
+      "full_supernet_macro_f1": {
+        "n": 5,
+        "mean": 0.6232930433888428,
+        "std": 0.05636876937533899,
+        "ci95_low": 0.5533131924359638,
+        "ci95_high": 0.6932728943417219
+      },
+      "full_supernet_accuracy": {
+        "n": 5,
+        "mean": 0.6533333333333333,
+        "std": 0.05434230782505546,
+        "ci95_low": 0.5858692633496344,
+        "ci95_high": 0.7207974033170322
+      },
+      "median_simulation_seconds": 5.64440430002287,
+      "mean_active_client_parameters": 4282.0,
+      "mean_selected_deployed_parameters": 2551.6,
+      "coordinate_coverage": 0.013305654361244302
+    }
+  },
+  "paired_vs_fedavg": {
+    "heterofl": {
+      "seeds": 5,
+      "capacity_selected_f1_delta_vs_fedavg_capacity": {
+        "n": 5,
+        "mean": 0.4696346738771786,
+        "std": 0.05897918393887848,
+        "ci95_low": 0.3964140847619078,
+        "ci95_high": 0.5428552629924494
+      },
+      "client_deployment_f1_delta_vs_full_fedavg_descriptive": {
+        "n": 5,
+        "mean": -0.2048192955665335,
+        "std": 0.043932228996834286,
+        "ci95_low": -0.2593596176508264,
+        "ci95_high": -0.1502789734822406
+      },
+      "full_supernet_f1_delta_vs_full_fedavg": {
+        "n": 5,
+        "mean": -0.30402168371023963,
+        "std": 0.07165359051357399,
+        "ci95_low": -0.3929771042373421,
+        "ci95_high": -0.21506626318313712
+      },
+      "median_paired_fedavg_to_candidate_time_ratio": 2.4503714421633864
+    },
+    "fjord": {
+      "seeds": 5,
+      "capacity_selected_f1_delta_vs_fedavg_capacity": {
+        "n": 5,
+        "mean": 0.5203515040796509,
+        "std": 0.06374484676251518,
+        "ci95_low": 0.441214511647694,
+        "ci95_high": 0.5994884965116078
+      },
+      "client_deployment_f1_delta_vs_full_fedavg_descriptive": {
+        "n": 5,
+        "mean": -0.15410246536406128,
+        "std": 0.050235380606697064,
+        "ci95_low": -0.21646792919048655,
+        "ci95_high": -0.091737001537636
+      },
+      "full_supernet_f1_delta_vs_full_fedavg": {
+        "n": 5,
+        "mean": -0.3407712115787604,
+        "std": 0.05510497643941958,
+        "ci95_low": -0.4091821079088757,
+        "ci95_high": -0.27236031524864507
+      },
+      "median_paired_fedavg_to_candidate_time_ratio": 3.1314579064685297
+    }
+  },
+  "per_device": {
+    "device-1": {
+      "profile_name": "edge-1t",
+      "logical_processors": 1,
+      "torch_threads": 1,
+      "capacity_tier": 0,
+      "capacity_depth": 1,
+      "capacity_width": 16,
+      "capacity_parameters": 1242,
+      "methods": {
+        "fedavg": {
+          "selected_test_macro_f1": {
+            "n": 5,
+            "mean": 0.17855943413192144,
+            "std": 0.05946024792428292,
+            "ci95_low": 0.1047416209443414,
+            "ci95_high": 0.25237724731950145
+          },
+          "selected_test_accuracy": {
+            "n": 5,
+            "mean": 0.22844444444444445,
+            "std": 0.0713606731961824,
+            "ci95_low": 0.13985267049752698,
+            "ci95_high": 0.3170362183913619
+          },
+          "mean_selected_deployment_parameters": 1242.0,
+          "mean_active_training_parameters": 830474.0,
+          "mean_local_training_seconds_per_round": 0.7437847999972291
+        },
+        "heterofl": {
+          "selected_test_macro_f1": {
+            "n": 5,
+            "mean": 0.6593957959479184,
+            "std": 0.061831058070853616,
+            "ci95_low": 0.5826347050813481,
+            "ci95_high": 0.7361568868144888
+          },
+          "selected_test_accuracy": {
+            "n": 5,
+            "mean": 0.7146666666666667,
+            "std": 0.03405152232778301,
+            "ci95_low": 0.6723928955053717,
+            "ci95_high": 0.7569404378279616
+          },
+          "mean_selected_deployment_parameters": 1242.0,
+          "mean_active_training_parameters": 1242.0,
+          "mean_local_training_seconds_per_round": 0.10524295003851876
+        },
+        "fjord": {
+          "selected_test_macro_f1": {
+            "n": 5,
+            "mean": 0.725276171624834,
+            "std": 0.08053338619036389,
+            "ci95_low": 0.6252967960807956,
+            "ci95_high": 0.8252555471688725
+          },
+          "selected_test_accuracy": {
+            "n": 5,
+            "mean": 0.7653333333333333,
+            "std": 0.05695135459428035,
+            "ci95_low": 0.6946302232559309,
+            "ci95_high": 0.8360364434107357
+          },
+          "mean_selected_deployment_parameters": 1242.0,
+          "mean_active_training_parameters": 1242.0,
+          "mean_local_training_seconds_per_round": 0.09151999247260392
+        }
+      }
+    },
+    "device-2": {
+      "profile_name": "low-2t",
+      "logical_processors": 2,
+      "torch_threads": 2,
+      "capacity_tier": 0,
+      "capacity_depth": 1,
+      "capacity_width": 16,
+      "capacity_parameters": 1242,
+      "methods": {
+        "fedavg": {
+          "selected_test_macro_f1": {
+            "n": 5,
+            "mean": 0.17855943413192144,
+            "std": 0.05946024792428292,
+            "ci95_low": 0.1047416209443414,
+            "ci95_high": 0.25237724731950145
+          },
+          "selected_test_accuracy": {
+            "n": 5,
+            "mean": 0.22844444444444445,
+            "std": 0.0713606731961824,
+            "ci95_low": 0.13985267049752698,
+            "ci95_high": 0.3170362183913619
+          },
+          "mean_selected_deployment_parameters": 1242.0,
+          "mean_active_training_parameters": 830474.0,
+          "mean_local_training_seconds_per_round": 1.3135201674769632
+        },
+        "heterofl": {
+          "selected_test_macro_f1": {
+            "n": 5,
+            "mean": 0.6593957959479184,
+            "std": 0.061831058070853616,
+            "ci95_low": 0.5826347050813481,
+            "ci95_high": 0.7361568868144888
+          },
+          "selected_test_accuracy": {
+            "n": 5,
+            "mean": 0.7146666666666667,
+            "std": 0.03405152232778301,
+            "ci95_low": 0.6723928955053717,
+            "ci95_high": 0.7569404378279616
+          },
+          "mean_selected_deployment_parameters": 1242.0,
+          "mean_active_training_parameters": 1242.0,
+          "mean_local_training_seconds_per_round": 0.1735918225138448
+        },
+        "fjord": {
+          "selected_test_macro_f1": {
+            "n": 5,
+            "mean": 0.725276171624834,
+            "std": 0.08053338619036389,
+            "ci95_low": 0.6252967960807956,
+            "ci95_high": 0.8252555471688725
+          },
+          "selected_test_accuracy": {
+            "n": 5,
+            "mean": 0.7653333333333333,
+            "std": 0.05695135459428035,
+            "ci95_low": 0.6946302232559309,
+            "ci95_high": 0.8360364434107357
+          },
+          "mean_selected_deployment_parameters": 1242.0,
+          "mean_active_training_parameters": 1242.0,
+          "mean_local_training_seconds_per_round": 0.14163798998342828
+        }
+      }
+    },
+    "device-3": {
+      "profile_name": "mid-4t",
+      "logical_processors": 4,
+      "torch_threads": 4,
+      "capacity_tier": 1,
+      "capacity_depth": 2,
+      "capacity_width": 32,
+      "capacity_parameters": 3594,
+      "methods": {
+        "fedavg": {
+          "selected_test_macro_f1": {
+            "n": 5,
+            "mean": 0.3334189744610345,
+            "std": 0.045310840359247484,
+            "ci95_low": 0.27716715470289266,
+            "ci95_high": 0.3896707942191764
+          },
+          "selected_test_accuracy": {
+            "n": 5,
+            "mean": 0.3848888888888889,
+            "std": 0.045823062822336016,
+            "ci95_low": 0.3280011629007747,
+            "ci95_high": 0.4417766148770031
+          },
+          "mean_selected_deployment_parameters": 3594.0,
+          "mean_active_training_parameters": 830474.0,
+          "mean_local_training_seconds_per_round": 0.8221606300328859
+        },
+        "heterofl": {
+          "selected_test_macro_f1": {
+            "n": 5,
+            "mean": 0.8311178351082782,
+            "std": 0.038537420526902476,
+            "ci95_low": 0.7832749786033975,
+            "ci95_high": 0.8789606916131589
+          },
+          "selected_test_accuracy": {
+            "n": 5,
+            "mean": 0.8480000000000001,
+            "std": 0.025023445796016428,
+            "ci95_low": 0.8169342693385322,
+            "ci95_high": 0.879065730661468
+          },
+          "mean_selected_deployment_parameters": 3370.0,
+          "mean_active_training_parameters": 3594.0,
+          "mean_local_training_seconds_per_round": 0.18528597749536857
+        },
+        "fjord": {
+          "selected_test_macro_f1": {
+            "n": 5,
+            "mean": 0.8839143253663211,
+            "std": 0.05205640293783371,
+            "ci95_low": 0.8192881261588151,
+            "ci95_high": 0.9485405245738271
+          },
+          "selected_test_accuracy": {
+            "n": 5,
+            "mean": 0.8915555555555557,
+            "std": 0.03726448678445259,
+            "ci95_low": 0.8452930016642797,
+            "ci95_high": 0.9378181094468316
+          },
+          "mean_selected_deployment_parameters": 3594.0,
+          "mean_active_training_parameters": 3594.0,
+          "mean_local_training_seconds_per_round": 0.18870635997736826
+        }
+      }
+    },
+    "device-4": {
+      "profile_name": "high-8t",
+      "logical_processors": 8,
+      "torch_threads": 8,
+      "capacity_tier": 2,
+      "capacity_depth": 4,
+      "capacity_width": 48,
+      "capacity_parameters": 11050,
+      "methods": {
+        "fedavg": {
+          "selected_test_macro_f1": {
+            "n": 5,
+            "mean": 0.46790329937068653,
+            "std": 0.05935317108123409,
+            "ci95_low": 0.3942184183297561,
+            "ci95_high": 0.5415881804116169
+          },
+          "selected_test_accuracy": {
+            "n": 5,
+            "mean": 0.5146666666666666,
+            "std": 0.04842201315543058,
+            "ci95_low": 0.45455243495633485,
+            "ci95_high": 0.5747808983769984
+          },
+          "mean_selected_deployment_parameters": 8602.0,
+          "mean_active_training_parameters": 830474.0,
+          "mean_local_training_seconds_per_round": 1.0982426025206222
+        },
+        "heterofl": {
+          "selected_test_macro_f1": {
+            "n": 5,
+            "mean": 0.8870704106001638,
+            "std": 0.030448558053240017,
+            "ci95_low": 0.8492695932697782,
+            "ci95_high": 0.9248712279305493
+          },
+          "selected_test_accuracy": {
+            "n": 5,
+            "mean": 0.8924444444444445,
+            "std": 0.025220019482864193,
+            "ci95_low": 0.8611346744424109,
+            "ci95_high": 0.9237542144464781
+          },
+          "mean_selected_deployment_parameters": 5664.4,
+          "mean_active_training_parameters": 11050.0,
+          "mean_local_training_seconds_per_round": 0.41768794250674546
+        },
+        "fjord": {
+          "selected_test_macro_f1": {
+            "n": 5,
+            "mean": 0.9053804897981783,
+            "std": 0.017507843330962725,
+            "ci95_low": 0.8836451161083786,
+            "ci95_high": 0.927115863487978
+          },
+          "selected_test_accuracy": {
+            "n": 5,
+            "mean": 0.9057777777777778,
+            "std": 0.017610322449919082,
+            "ci95_low": 0.8839151798545981,
+            "ci95_high": 0.9276403757009575
+          },
+          "mean_selected_deployment_parameters": 4128.4,
+          "mean_active_training_parameters": 11050.0,
+          "mean_local_training_seconds_per_round": 0.46903892499394717
+        }
+      }
+    }
+  }
+}

@@ -19,10 +19,10 @@ from pydantic import BaseModel  # noqa: E402
 
 from db_handler import read_db, write_db, get_project, update_project, append_round_history  # noqa: E402
 from auth_router import verify_jwt  # noqa: E402
-from aggregation import aggregate_fedavg, update_with_momentum, validate_global_model, EmptyRoundError  # noqa: E402
+from aggregation import aggregate_fedavg, aggregate_partial_fedavg, update_with_momentum, validate_global_model, EmptyRoundError  # noqa: E402
 from nas_controller import evaluate_architecture_candidates  # noqa: E402
 from shared.model_schema import MODEL_CONFIG, SERVER_SCHEMA  # noqa: E402
-from resource_planner import depth_for_profile, normalise_hardware_profile, build_round_plan  # noqa: E402
+from resource_planner import depth_for_profile, width_for_profile, normalise_hardware_profile, build_round_plan  # noqa: E402
 
 # ── Phase 2 infrastructure (graceful degradation when not configured) ─────────
 try:
@@ -55,12 +55,11 @@ _velocity_state:  dict = {}   # proj_id → velocity dict for momentum
 _buffer_lock = threading.Lock()
 
 # ── Server-side validation dataloader (created at startup by main.py) ────────
-_val_dataloader = None
+_val_dataloaders: dict = {}
 
 
-def set_val_dataloader(dl):
-    global _val_dataloader
-    _val_dataloader = dl
+def set_val_dataloader(dl, proj_id: str | None = None):
+    _val_dataloaders[proj_id] = dl
 
 
 def _dispatch_round(
@@ -114,6 +113,7 @@ class JoinRequest(BaseModel):
 class UpdateRequest(BaseModel):
     round_id:     int
     active_depth: int
+    active_width: int | None = None
     weights:      dict   # encrypted payload
     num_samples:  int
     metrics:      dict
@@ -179,7 +179,8 @@ async def join_project(
 
     user_id = current_user["sub"]
     hardware_profile = normalise_hardware_profile(payload.hardware_profile)
-    recommended_depth = depth_for_profile(hardware_profile, MODEL_CONFIG["max_depth"])
+    model_config = proj.get("model_config", MODEL_CONFIG) or MODEL_CONFIG
+    recommended_depth = depth_for_profile(hardware_profile, model_config.get("max_depth", MODEL_CONFIG["max_depth"]))
 
     # Add to pending_clients if not already there or in connected
     pending = proj.get("pending_clients", [])
@@ -200,6 +201,9 @@ async def join_project(
         "recommended_depth": recommended_depth,
         "required_schema":  proj.get("data_schema", SERVER_SCHEMA),
         "schema_version":   proj.get("schema_version", "1.0.0"),
+        "model_family": proj.get("model_family", "clinical_multitask"),
+        "task_config": proj.get("task_config", {}),
+        "model_config": model_config,
     })
 
 
@@ -220,11 +224,9 @@ async def get_global_model(
     model_path = proj.get("global_model_path")
     if model_path and os.path.exists(model_path):
         weights_raw = torch.load(model_path, map_location="cpu")
-        weights_json = {k: (v.numpy().tolist() if hasattr(v, 'numpy') else v.tolist())
-                        for k, v in weights_raw.items()}
     else:
         # Return empty weights dict for the first round
-        weights_json = {}
+        weights_raw = {}
 
     # Per-client depth assignment.  The same explainable plan is returned to
     # the browser console, while this endpoint returns only this client's
@@ -232,13 +234,38 @@ async def get_global_model(
     db = read_db()
     profiles = proj.get("client_profiles", {}) or {}
     own_profile = profiles.get(user_id, {}).get("hardware_profile", {})
-    active_depth = depth_for_profile(own_profile, MODEL_CONFIG["max_depth"])
+    model_config = proj.get("model_config", MODEL_CONFIG) or MODEL_CONFIG
+    active_depth = depth_for_profile(own_profile, model_config.get("max_depth", MODEL_CONFIG["max_depth"]))
+    active_width = (
+        width_for_profile(own_profile, model_config.get("max_width", MODEL_CONFIG["hidden_dim"]))
+        if proj.get("model_family") == "elastic_tabular"
+        else int(model_config.get("hidden_dim", MODEL_CONFIG["hidden_dim"]))
+    )
+    if proj.get("model_family") == "elastic_tabular" and weights_raw:
+        # The tabular participant receives only its assigned prefix. This
+        # keeps transfer and client-side model storage proportional to its
+        # resource budget instead of materializing the coordinator supernet.
+        client_path = os.path.join(os.path.dirname(__file__), "..", "client")
+        if client_path not in sys.path:
+            sys.path.insert(0, client_path)
+        from tabular_fl import project_subnet_weights
+        weights_raw = project_subnet_weights(weights_raw, model_config, active_depth, active_width)
+    weights_json = {
+        key: (value.detach().cpu().numpy().tolist() if hasattr(value, "detach")
+              else value.tolist() if hasattr(value, "tolist") else value)
+        for key, value in weights_raw.items()
+    }
     users = {item.get("user_id"): item for item in db.get("users", [])}
     round_plan = build_round_plan(proj, users)
 
     return JSONResponse(status_code=200, content={
         "round":        proj.get("current_round", 0),
+        "max_rounds":   proj.get("max_rounds", 20),
         "active_depth": active_depth,
+        "active_width": active_width,
+        "model_family": proj.get("model_family", "clinical_multitask"),
+        "task_config": proj.get("task_config", {}),
+        "model_config": model_config,
         "weights":      weights_json,
         "round_plan":   round_plan,
     })
@@ -330,8 +357,19 @@ async def post_model_update(
     if user_id not in proj.get("connected_clients", []):
         raise _http_error(403, "Not an approved participant.")
 
+    if proj.get("model_family") == "elastic_tabular":
+        model_config = proj.get("model_config", {})
+        if payload.num_samples <= 0:
+            raise _http_error(422, "A training update must include at least one local sample.")
+        if not 1 <= payload.active_depth <= int(model_config.get("max_depth", 1)):
+            raise _http_error(422, "The submitted model depth is outside this workspace configuration.")
+        if payload.active_width is None or not 16 <= payload.active_width <= int(model_config.get("max_width", 0)) or payload.active_width % 16:
+            raise _http_error(422, "The submitted model width must be a configured 16-unit prefix.")
+
     # Round ID check
     current_round = proj.get("current_round", 0)
+    if current_round >= int(proj.get("max_rounds", 20)):
+        raise _http_error(409, "This workspace has completed its configured training rounds.")
     if payload.round_id != current_round:
         return JSONResponse(status_code=409, content={
             "detail": "Round ID mismatch.",
@@ -350,6 +388,7 @@ async def post_model_update(
         "weights":     decrypted,
         "num_samples": payload.num_samples,
         "active_depth": payload.active_depth,
+        "active_width": payload.active_width,
         "metrics":     payload.metrics,
     }
 
@@ -471,8 +510,12 @@ def round_lifecycle(proj_id: str, updates_buffer: list, db_snapshot: dict) -> No
         weight_dicts = [u["weights"] for u in updates_buffer]
         sample_counts = [u["num_samples"] for u in updates_buffer]
 
-        # ── Step 1: FedAvg ───────────────────────────────────────────────────
-        fedavg_result = aggregate_fedavg(weight_dicts, sample_counts)
+        # ── Step 1: aggregate only coordinates covered by a client subnet ───
+        custom_model = proj.get("model_family") == "elastic_tabular"
+        if custom_model:
+            fedavg_result = aggregate_partial_fedavg(current_global, weight_dicts, sample_counts)
+        else:
+            fedavg_result = aggregate_fedavg(weight_dicts, sample_counts)
 
         # ── Step 2: Momentum ─────────────────────────────────────────────────
         velocity = _velocity_state.get(proj_id, {})
@@ -482,8 +525,39 @@ def round_lifecycle(proj_id: str, updates_buffer: list, db_snapshot: dict) -> No
 
         # ── Step 3: Validate ─────────────────────────────────────────────────
         metrics = {}
-        if _val_dataloader is not None:
-            metrics = validate_global_model(new_global, _val_dataloader, MODEL_CONFIG)
+        val_dataloader = _val_dataloaders.get(proj_id) or _val_dataloaders.get(None)
+        if val_dataloader is not None:
+            if custom_model:
+                client_path = os.path.join(os.path.dirname(__file__), "..", "client")
+                if client_path not in sys.path:
+                    sys.path.insert(0, client_path)
+                from tabular_fl import (
+                    validate_client_subnet,
+                    validate_global_model as validate_tabular_model,
+                )
+                metrics = validate_tabular_model(new_global, proj["task_config"], proj["model_config"], val_dataloader)
+                client_deployments = []
+                for update in updates_buffer:
+                    depth = int(update.get("active_depth", proj["model_config"]["max_depth"]))
+                    width = int(update.get("active_width", proj["model_config"]["max_width"]))
+                    deployment = validate_client_subnet(
+                        new_global, proj["task_config"], proj["model_config"],
+                        val_dataloader, depth, width,
+                    )
+                    client_deployments.append({
+                        "user_id": update.get("user_id"),
+                        "active_depth": depth,
+                        "active_width": width,
+                        **deployment,
+                    })
+                if client_deployments:
+                    for metric in ("accuracy", "macro_f1", "rmse"):
+                        values = [item[metric] for item in client_deployments if metric in item]
+                        if values:
+                            metrics[f"client_deployment_{metric}"] = float(np.mean(values))
+                    metrics["client_deployments"] = client_deployments
+            else:
+                metrics = validate_global_model(new_global, val_dataloader, MODEL_CONFIG)
 
         # ── Step 4: NAS ──────────────────────────────────────────────────────
         updates_by_depth = {}
@@ -491,7 +565,7 @@ def round_lifecycle(proj_id: str, updates_buffer: list, db_snapshot: dict) -> No
             d = u.get("active_depth", MODEL_CONFIG["max_depth"])
             updates_by_depth.setdefault(d, []).append(u)
 
-        if len(updates_by_depth) > 1:
+        if not custom_model and len(updates_by_depth) > 1:
             recommended_depth = evaluate_architecture_candidates(updates_by_depth, current_global)
         else:
             recommended_depth = proj.get("recommended_depth", MODEL_CONFIG["max_depth"])
@@ -506,6 +580,8 @@ def round_lifecycle(proj_id: str, updates_buffer: list, db_snapshot: dict) -> No
             "current_round":     new_round,
             "global_model_path": pt_path,
             "recommended_depth": recommended_depth,
+            "training_status": "completed" if new_round >= int(proj.get("max_rounds", 20)) else "running",
+            "accepting_clients": False if new_round >= int(proj.get("max_rounds", 20)) else proj.get("accepting_clients", True),
             "round_progress": {
                 "round": new_round,
                 "submitted": 0,
@@ -520,6 +596,13 @@ def round_lifecycle(proj_id: str, updates_buffer: list, db_snapshot: dict) -> No
             "round":   new_round,
             "participants": [u.get("user_id") for u in updates_buffer],
             "depths": {str(u.get("user_id")): int(u.get("active_depth", MODEL_CONFIG["max_depth"])) for u in updates_buffer},
+            "widths": {str(u.get("user_id")): int(u.get("active_width") or 0) for u in updates_buffer},
+            "active_parameters": {
+                str(u.get("user_id")): int(u.get("metrics", {}).get("active_parameters", 0))
+                for u in updates_buffer
+            },
+            "mean_local_loss": float(np.mean([u.get("metrics", {}).get("local_loss", 0.0) for u in updates_buffer])),
+            "model_family": proj.get("model_family", "clinical_multitask"),
             **metrics,
         }
         append_round_history(record)

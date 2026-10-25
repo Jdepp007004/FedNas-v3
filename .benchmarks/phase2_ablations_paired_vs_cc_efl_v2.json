@@ -1,0 +1,86 @@
+{
+  "analysis": "paired ablation deltas against CC-EFL on same seeds; unadjusted 95% Student-t intervals",
+  "datasets": {
+    "adult": {
+      "selection_metric": "macro_f1",
+      "primary_run_manifest_source_sha256": "60829728a6cf6ef9ef3a0cbc0752a187e781f7f8916b322dbb6fc7d184e80643",
+      "ablation_run_manifest_source_sha256": "1c8655dcc05b83d575749fb1113f9ff98fe1186119a3324d0b243b0119bb98bb",
+      "strategies": {
+        "cc_efl_no_prox": {
+          "mean": 0.6609616835242863,
+          "paired_delta_vs_cc_efl": {
+            "n": 5,
+            "mean": 0.006148909504908584,
+            "std": 0.016425877105990628,
+            "ci95_low": -0.014243241049125398,
+            "ci95_high": 0.026541060058942568
+          }
+        },
+        "cc_efl_uniform": {
+          "mean": 0.6477278913584368,
+          "paired_delta_vs_cc_efl": {
+            "n": 5,
+            "mean": -0.00708488266094105,
+            "std": 0.01540690257322843,
+            "ci95_low": -0.026212012056668975,
+            "ci95_high": 0.012042246734786877
+          }
+        }
+      }
+    },
+    "bank_marketing": {
+      "selection_metric": "macro_f1",
+      "primary_run_manifest_source_sha256": "c16bff0e6b75bcdbf11c9d186446f0077867e4f05e0a4b7d9ac44a82035c1840",
+      "ablation_run_manifest_source_sha256": "1c8655dcc05b83d575749fb1113f9ff98fe1186119a3324d0b243b0119bb98bb",
+      "strategies": {
+        "cc_efl_no_prox": {
+          "mean": 0.6258052764032709,
+          "paired_delta_vs_cc_efl": {
+            "n": 5,
+            "mean": -0.004641638209663857,
+            "std": 0.008316939938839429,
+            "ci95_low": -0.014966827561032948,
+            "ci95_high": 0.0056835511417052354
+          }
+        },
+        "cc_efl_uniform": {
+          "mean": 0.6355367678342811,
+          "paired_delta_vs_cc_efl": {
+            "n": 5,
+            "mean": 0.00508985322134643,
+            "std": 0.009139500698621562,
+            "ci95_low": -0.006256516475223244,
+            "ci95_high": 0.016436222917916105
+          }
+        }
+      }
+    },
+    "har": {
+      "selection_metric": "macro_f1",
+      "primary_run_manifest_source_sha256": "c16bff0e6b75bcdbf11c9d186446f0077867e4f05e0a4b7d9ac44a82035c1840",
+      "ablation_run_manifest_source_sha256": "1c8655dcc05b83d575749fb1113f9ff98fe1186119a3324d0b243b0119bb98bb",
+      "strategies": {
+        "cc_efl_no_prox": {
+          "mean": 0.8027931552503658,
+          "paired_delta_vs_cc_efl": {
+            "n": 5,
+            "mean": -0.003244205079952045,
+            "std": 0.003883396355221921,
+            "ci95_low": -0.008065305507386194,
+            "ci95_high": 0.0015768953474821048
+          }
+        },
+        "cc_efl_uniform": {
+          "mean": 0.8371575898824674,
+          "paired_delta_vs_cc_efl": {
+            "n": 5,
+            "mean": 0.031120229552149437,
+            "std": 0.027184819526589004,
+            "ci95_low": -0.002628770820455817,
+            "ci95_high": 0.06486922992475469
+          }
+        }
+      }
+    }
+  }
+}

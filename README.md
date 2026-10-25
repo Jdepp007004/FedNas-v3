@@ -8,8 +8,9 @@
 
 # FL Platform — End-to-End Federated Learning for Clinical Data
 
-**Privacy-preserving, distributed model training across hospital networks**  
-*No patient data ever leaves the client machine.*
+**Distributed model training across heterogeneous data owners**
+
+*Participant training rows stay on their client machines; the coordinator receives model updates.*
 
 [Getting Started](#getting-started) · [Architecture](#architecture) · [Dataset](#dataset) · [Running](#running) · [Testing](#testing) · [Contributing](#contributing)
 
@@ -19,12 +20,40 @@
 
 ## Overview
 
-FL Platform enables hospitals to collaboratively train a shared neural network on TCGA clinical data **without sharing raw patient records**. Each hospital trains locally on its own silo, then sends only encrypted model weight updates to a central coordinator.
+FL Platform supports two workflows: a fixed multi-task clinical model and a self-serve tabular workflow where a project owner chooses a prediction target and participants train on private CSV silos. In both workflows, participants train locally and send encrypted model updates to a coordinator; their raw client rows stay on their machines.
 
 For the runnable host/client workflow, including the new live host console,
 client resource controls, ngrok setup, and four ready-to-share partitions, see
 [`RUN_LOCAL.md`](RUN_LOCAL.md). Start the host with `python host_app.py` and use
 `/host`; participants can use `/client` or `client/client.html`.
+
+For the self-serve capstone path, open `/create` on the host, choose
+classification or regression, enter a target column, and add a held-out host
+setup CSV. The platform generates a six-layer, up-to-512-width MLP (about 1.6M
+parameters for 32 classes) and assigns each client a depth/width prefix based
+on its dedicated CPU and RAM. See
+[`docs/SELF_SERVE_TABULAR_TRAINING.md`](docs/SELF_SERVE_TABULAR_TRAINING.md) for
+the data contract and participant workflow. This starter currently generates
+tabular MLPs; it does not accept arbitrary user-supplied model code.
+See the [capstone final story and demo plan](docs/CAPSTONE_FINAL_STORY.md) and
+the [five-seed website-method benchmark](non_medical_benchmark/WEBSITE_METHOD_BENCHMARK.md)
+for the final presentation narrative, exact four-client profiles, measured
+results, and limitations. The host setup CSV is uploaded to the coordinator,
+so use public or synthetic setup data for the capstone demonstration. After
+training, the host dashboard downloads the latest tabular model, preprocessing
+settings, and a portable prediction script; see [MODEL_EXPORT.md](docs/MODEL_EXPORT.md).
+
+### Resource-aware federated training benchmark
+
+The separate [`non_medical_benchmark` research track](non_medical_benchmark/README.md)
+measures whether CPU-limited clients can train useful submodels of a larger
+shared MLP. In a fresh ten-seed HAR simulation, a one-thread FjORD client
+selected a 13,686-parameter model with 0.889 test macro-F1 while the four
+workers trained against a 2.81M-parameter server model. These were four
+affinity-limited processes on one workstation, not physical edge devices; the
+full FjORD supernet remained under-covered (0.811 macro-F1, 2.23% coordinate
+coverage). See the [four-device results and limitations](non_medical_benchmark/FOUR_DEVICE_BENCHMARK.md)
+and the [IJCNN 2027 submission package](non_medical_benchmark/submission/README.md).
 
 ### Key Features
 
@@ -35,7 +64,9 @@ client resource controls, ngrok setup, and four ready-to-share partitions, see
 | ⚖️ **FedProx Regularization** | Handles heterogeneous local datasets |
 | 🌐 **ngrok Tunneling** | Server reachable publicly without port-forwarding |
 | 📊 **Live Dashboard** | Google Material UI admin dashboard |
-| 🖥️ **Browser Client** | Single HTML file — no install needed for clients |
+| 🖥️ **Client control page** | Browser setup plus a local Python worker for actual training |
+| 🧩 **Self-serve tabular tasks** | Configure a classification or regression project from CSV columns |
+| 📱 **Budget-conditioned elastic MLP** | Assign depth and width prefixes to clients by dedicated CPU/RAM |
 | ✅ **CI/CD Pipeline** | GitHub Actions: lint → test → Docker build → integration |
 
 ---

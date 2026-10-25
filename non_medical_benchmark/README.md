@@ -17,7 +17,8 @@ The `legacy` benchmark reproduces the first design pattern with a single classif
 - `LayerNorm`, which has no cross-client running statistics;
 - residual connections for the deeper path;
 - shape-safe aggregation for partial tensors;
-- rotation of client capacities for better coverage;
+- fixed client capability profiles shared across comparison methods;
+- channel-window rotation within each client's fixed capability;
 - MaxNet-inspired largest-subnet priority with cosine decay;
 - validation-based subnet choice with a FLOP tie-breaker.
 
@@ -36,11 +37,25 @@ in-process.
 
 The paper track exposes the reference mechanisms as separate, auditable
 strategies: `fedavg`, `fedprox`, `heterofl`, `fjord`, `fedrolex`, `maxnet`,
-`scaffold`, and the integrated `cc_efl` method. The older names `static`,
-`elastic`, and `elastic_scaffold` remain available for compatibility. The
-runner records accuracy, macro-F1, parameter count, active FLOPs,
-upload/download bytes, per-tier test accuracy, confidence intervals, and
-deadline participation.
+and the integrated `cc_efl` method. SCAFFOLD is evaluated separately with an
+optimizer-matched SGD comparison (`fedavg`, `fedprox`, `scaffold`); it is not
+mixed into the primary Adam comparison. Matched controls include
+`cc_efl_no_prox`, `cc_efl_uniform`, and `cc_efl_random_window`; the last keeps
+the same per-client model sizes while randomizing channel offsets. The
+`cc_efl_fjord` extension adds FjORD-style ordered-width distillation to
+CC-EFL and remains exploratory until its matched results are reviewed.
+`cc_efl_warmup_fjord` uses a 20% stable-prefix warmup before rolling windows,
+with the same local distillation; it is also exploratory. The
+`cc_efl_dynamic` variant preserves the rotating-capacity schedule as a
+separate diagnostic, not as the fixed-device primary setting. The older names
+`static`, `elastic`, and `elastic_scaffold` remain available for compatibility.
+Every run records its client capacity map, parameter-coordinate coverage,
+per-capacity validation-selected models, confidence intervals, software
+versions, and split fingerprints. FLOPs are per-example forward estimates;
+payload-byte and local wall-clock measurements are reported separately.
+Result summaries separate full-supernet test performance from fixed-capacity,
+validation-selected deployment performance. A sliced FedAvg subnet is a
+deployment reference, distinct from the full-model FedAvg score.
 
 The implementation is faithful to the algorithmic mechanisms, not a claim of
 bit-for-bit reproduction of the papers' original CNN/RNN code. Our shared
@@ -99,6 +114,24 @@ python -m non_medical_benchmark.run_cifar_benchmark --dataset cifar10 --download
 python -m non_medical_benchmark.run_cifar_benchmark --dataset cifar100 --download --rounds 20 --max-train 10000 --max-test 5000 --seeds 1 2 3 4 5 --strategies fedavg heterofl fjord fedrolex cc_efl --output .benchmarks/cifar100_paper.json
 ```
 
+## Server-model width scaling
+
+The scaling runner compares an expanded server supernet with a fixed client
+capacity menu. In `fixed` mode, server width grows while client widths remain
+at the dataset's original capability tiers. `proportional` mode grows both;
+that mode does not test a constant client budget. Results include capacity-
+selected utility, per-client active parameters and FLOPs, tensor payload,
+supernet coordinate coverage, and simulator wall-clock time. Weight bytes and
+FLOPs are estimates, and local wall time is not an edge-device measurement.
+
+```text
+python -m non_medical_benchmark.run_model_scaling_benchmark --dataset har --scales 1 4 --capacity-scaling fixed --rounds 8 --seeds 1 2 3 4 5 --strategies fedavg heterofl fjord fedrolex maxnet cc_efl --torch-threads 1 --output .benchmarks/model_scaling/har_fixedclient_widthscale_1_4_8r_5seeds.json
+python -m non_medical_benchmark.run_model_scaling_benchmark --dataset har --scales 8 --capacity-scaling fixed --rounds 8 --seeds 1 2 3 --strategies fedavg heterofl fjord fedrolex maxnet cc_efl --torch-threads 1 --output .benchmarks/model_scaling/har_fixedclient_widthscale_8_8r_3seeds.json
+```
+
+The current exploratory results and coverage limitation are summarized in
+[`RESULTS.md`](RESULTS.md).
+
 ## Reproducible environment
 
 The benchmark was run with Python 3.13.7, NumPy 2.2.6, pandas 2.3.3,
@@ -120,6 +153,10 @@ permission failures.
 - [FedRolex, NeurIPS 2022](https://arxiv.org/abs/2212.01548) rotates which portions of the server model each client receives. Its selective averaging is per-parameter based on the clients that updated that parameter. In the reported high-heterogeneity table, FedRolex reaches 69.44% vs. HeteroFL's 63.90% on CIFAR-10 and 56.57% vs. 52.38% on CIFAR-100; the low-heterogeneity figures are 84.45% vs. 73.19% and 58.73% vs. 57.44%, respectively. This is the strongest direct argument against always training only the first prefix.
 - [Once-for-All Federated Learning, KDD FL4Data-Mining 2023](https://openreview.net/pdf?id=aJhe-VC0Ue) adapts progressive pruning and local joint optimization to FL. The authors report that optimizing all subnet sizes together gives the highest average subnet accuracy and the lowest variance in their MNIST/CIFAR-10 studies. Its key warning is that smaller subnets can be neglected unless the local loss explicitly trains them.
 - [SuperFedNAS / MaxNet, ECCV 2024](https://www.ecva.net/papers/eccv_2024/papers_ECCV/papers/10165.pdf) is the closest match to this track. It samples smallest, largest, and random subnets, prioritizes coverage of shared weights, and uses a decaying largest-subnet aggregation weight. On its CIFAR-10/100/CINIC-10 table, the 0.45–0.95B MAC results are 89.42/56.35/73.12% for SuperFedNAS versus 85.25/43.19/61.76% for FedAvg. The paper reports up to 37.7% higher accuracy at the same MACs, up to 8.13x fewer MACs at the same accuracy, and an 11x reduction in training cost for 20 deployment targets. It also shows naive supernet FL can converge more slowly and underperform FedAvg, so the supernet alone is not enough.
+
+### Pretrained-text adapter benchmark
+
+An additional UCI SMS experiment uses [BERT-Tiny](https://huggingface.co/google/bert_uncased_L-2_H-128_A-2) with rank-window LoRA adapters on the final attention block and a trainable classifier head. The 4.39M-parameter base encoder remains frozen; the frozen prefix is cached locally per client partition. In five seeds × nine strategies, no strategy comparison survives Holm correction. Heterogeneous methods reduce estimated float32 adapter/head update payload by 44.4% per round relative to rank-4 FedAvg, excluding the frozen base. The initial Dirichlet split has substantial quantity skew (mean client-size CV 0.927). A post-hoc balanced-size sensitivity run reduces this CV to 0.00072 but still finds no corrected strategy or protocol effect; because it also changes class allocation, it is not a pure quantity-skew intervention. See RESULTS.md and RESEARCH_PROGRESS.md for full results, limitations, and reproduction commands.
 
 ### Normalization warning
 

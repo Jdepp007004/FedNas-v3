@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Federated Lab · Create a model</title>
+  <style>
+    :root{--ink:#15221d;--muted:#65736d;--line:#dfe8e3;--panel:#fff;--bg:#f4f8f5;--green:#176b4d;--green2:#dff4e8;--red:#a63d3d;--shadow:0 12px 35px #15392b12}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif}.top{background:#123e2f;color:#fff;padding:20px clamp(18px,4vw,48px);display:flex;justify-content:space-between;align-items:center}.brand{font-size:19px;font-weight:750}.top a{color:#d9f1e3}.wrap{max-width:800px;margin:34px auto;padding:0 20px 50px}.card{background:var(--panel);border:1px solid #e7eeea;border-radius:18px;box-shadow:var(--shadow);padding:clamp(22px,4vw,38px)}h1{margin:0 0 8px;font-size:30px;letter-spacing:-.04em}.sub,.hint{color:var(--muted)}.sub{margin:0 0 24px}.field{display:flex;flex-direction:column;gap:7px;margin:18px 0}.field label{font-size:13px;font-weight:700}.field input,.field select{width:100%;font:inherit;border:1px solid var(--line);border-radius:10px;padding:12px;background:#fbfdfb}.field input:focus,.field select:focus{outline:2px solid #dff4e8;border-color:#4b9b78}.drop{border:1.5px dashed #91bba5;border-radius:12px;padding:20px;background:#f8fcf9}.hint{font-size:13px}.note{border-left:3px solid #67a587;padding:10px 13px;background:#f4f8f5;margin:20px 0}.btn{border:0;border-radius:10px;padding:12px 18px;font:inherit;font-weight:750;cursor:pointer}.primary{background:var(--green);color:#fff}.ghost{background:transparent;color:var(--green);text-decoration:none;border:1px solid var(--line);padding:9px 13px;border-radius:9px}.status{margin-top:14px;min-height:22px;color:var(--muted);font-size:13px}.error{color:var(--red)}.success{color:var(--green)}
+  </style>
+</head>
+<body>
+  <header class="top"><div class="brand">Federated Lab · Create workspace</div><a href="/host">Host dashboard</a></header>
+  <main class="wrap">
+    <section class="card">
+      <h1>Train a model on your data</h1>
+      <p class="sub">Create a federated tabular task. Participants keep their training CSVs on their own devices. Use public or synthetic data for setup: the coordinator stores the 20% validation slice from the host CSV.</p>
+      <form id="create-form">
+        <div class="field"><label for="name">Workspace name</label><input id="name" name="name" maxlength="100" required placeholder="e.g. Customer churn model"></div>
+        <div class="field"><label for="task">What should the model predict?</label><select id="task" name="task_type"><option value="classification">A category (classification)</option><option value="regression">A number (regression)</option></select></div>
+        <div class="field"><label for="target">Target column name</label><input id="target" name="target_column" required placeholder="e.g. churned"></div>
+        <div class="field" id="classes-field"><label for="classes">Classification labels (optional)</label><input id="classes" name="class_labels" placeholder="Leave blank to infer, or enter yes,no,unknown"><p class="hint">Enter every label participants may use. The shared output mapping is created in this order.</p></div>
+        <div class="field"><label for="max-depth">Maximum shared model depth</label><select id="max-depth" name="max_depth"><option value="2">2 layers</option><option value="3" selected>3 layers</option><option value="4">4 layers</option><option value="6">6 layers</option></select><p class="hint">The coordinator stores this model; each participant may receive a shallower prefix.</p></div>
+        <div class="field"><label for="max-width">Maximum shared model width</label><select id="max-width" name="max_width"><option value="64" selected>64 units</option><option value="128">128 units</option><option value="256">256 units</option><option value="512">512 units</option></select><p class="hint">Choose a task-appropriate capacity. The resource planner can assign narrower prefixes to low-budget participants.</p></div>
+        <div class="field"><label for="csv">Host setup and validation CSV</label><div class="drop"><input id="csv" name="file" type="file" accept=".csv,text/csv" required><p class="hint">Use the same column names as participant CSVs. Keep this file separate from participant training rows; the 20% validation slice stays on the host.</p></div></div>
+        <div class="note"><strong>How resource-aware training works</strong><div class="hint">The coordinator creates one shared MLP at the selected maximum size. Each device receives only a compact prefix whose depth and width fit its dedicated CPU and RAM. The server merges only parameters the participant trained. Participant training rows stay local.</div></div>
+        <button class="btn primary" id="submit" type="submit">Create training workspace</button>
+        <a class="ghost" href="/host" style="margin-left:8px">Cancel</a>
+        <div id="status" class="status" role="status"></div>
+      </form>
+    </section>
+  </main>
+  <script>
+    const form=document.getElementById('create-form'),status=document.getElementById('status'),button=document.getElementById('submit'),task=document.getElementById('task'),classes=document.getElementById('classes-field');
+    task.addEventListener('change',()=>classes.style.display=task.value==='classification'?'flex':'none');
+    task.dispatchEvent(new Event('change'));
+    form.addEventListener('submit',async event=>{event.preventDefault();status.textContent='Reading the validation CSV and preparing the shared model…';status.className='status';button.disabled=true;try{const body=new FormData(form),response=await fetch('/api/host/projects/tabular',{method:'POST',body}),data=await response.json();if(!response.ok)throw new Error(data.detail||`Request failed (${response.status})`);status.textContent=`Created ${data.name}: ${data.task_type} on “${data.target_column}”, ${data.feature_count} input columns${data.classes?.length?`, ${data.classes.length} classes`:''}, ${data.max_depth} layers × ${data.max_width} max width. Opening the host dashboard…`;status.className='status success';setTimeout(()=>location.href=`/host?project=${encodeURIComponent(data.proj_id)}`,500)}catch(error){status.textContent=error.message;status.className='status error';button.disabled=false}});
+  </script>
+</body>
+</html>

@@ -4,6 +4,10 @@ This is the runnable code path for the platform. It is separate from the
 demo/site project and uses the existing FastAPI server plus the native Python
 client trainer.
 
+To let users define a new CSV prediction task, open `/create` from the host
+machine after starting the server. That flow creates a tabular workspace with
+an elastic model; it does not replace the original clinical workspace.
+
 ## Dataset recommendation
 
 Use the four checked-in files in `split_data/`. They are the standalone client
@@ -69,14 +73,15 @@ enter.
 
 1. Run only `python client_app.py`. The local client page opens automatically.
 2. Enter a name (for example `Client 1`) and the host's ngrok URL, then click
-   **Connect and request access**. The project is selected automatically.
+   **Connect**. Select the intended workspace in the project list. A self-serve
+   task shows its type and target column.
 3. The page shows the client's real available RAM/CPU when the local agent is
    running. Enter the RAM and CPU amount to dedicate.
-4. Select the assigned `split_data/client_N.csv`. The file is copied only to
-   this laptop; it is never uploaded to the host.
+4. Select your local CSV and click **Request access / save allocation**. The
+   file is copied only to this laptop; it is never uploaded to the host.
 5. The host approves the request by the displayed name in `/host`.
-6. After approval, the native worker starts automatically. No project ID,
-   generated command, username, or password is needed.
+6. The native worker starts for the selected workspace and trains after
+   approval. No project ID, generated command, username, or password is needed.
 
 The native client detects available RAM/CPU with `psutil` when installed and
 uses the contribution values entered in the page. It trains locally, encrypts
@@ -114,3 +119,29 @@ The host page updates over a WebSocket stream and shows:
 The underlying round remains the existing FedAvg + momentum + optional server
 validation pipeline. If fewer clients are available, set the minimum updates
 per round in the host console to the number you want to wait for.
+
+## Create and train a user-defined tabular task
+
+1. On the host, open `/create` (or choose **Create a tabular model** in `/host`).
+2. Enter a workspace name, choose classification or regression, type the exact
+   target column, and upload a host setup CSV. The platform uses a fixed 80/20
+   split: reference rows set shared numeric statistics and class vocabulary,
+   while the held-out slice reports global validation metrics. Keep this file
+   separate from participant training rows.
+3. Share the host URL and encryption key with participants as described above.
+   Each participant chooses this workspace, attaches a local CSV with matching
+   column names and target labels, and requests access.
+4. Approve the participants in `/host`. Set the minimum updates per round to
+   the number of clients you want the coordinator to wait for (for example, 4
+   for a four-device round).
+5. Watch the live assignment and round history. The validation table reports
+   accuracy and macro-F1 for classification, or RMSE for regression.
+
+The generated MLP has six maximum layers, 512 hashed input features, and a
+maximum hidden width of 512 (about 1.6 million parameters for a 32-class task).
+CPU/RAM budgets select nested prefixes; narrower clients send only the weights
+for the layers and width they trained, while the coordinator preserves
+uncovered coordinates. The self-serve mode supports up to 500 input columns,
+32 classification labels, and 200 MB host CSVs. It handles numeric and
+categorical input columns with one shared deterministic feature map. It is a
+tabular starter model, not an arbitrary PyTorch model upload service.

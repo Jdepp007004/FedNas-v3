@@ -51,8 +51,16 @@ class _BaseElasticMLP(nn.Module):
 class ElasticMLP(_BaseElasticMLP):
     """Revised depth-and-width elastic MLP for non-IID federated clients."""
 
-    def __init__(self, input_dim: int, num_classes: int, max_depth: int, hidden_dim: int):
+    def __init__(
+        self,
+        input_dim: int,
+        num_classes: int,
+        max_depth: int,
+        hidden_dim: int,
+        use_residual: bool = True,
+    ):
         super().__init__(input_dim, num_classes, max_depth, hidden_dim)
+        self.use_residual = bool(use_residual)
         self.norms = nn.ModuleList([nn.LayerNorm(hidden_dim) for _ in range(max_depth)])
 
     def forward(self, x: torch.Tensor, active_depth: int, active_width: int) -> torch.Tensor:
@@ -60,7 +68,7 @@ class ElasticMLP(_BaseElasticMLP):
         h = x.float()
         for i in range(active_depth):
             in_width = self.input_dim if i == 0 else active_width
-            residual = h[..., :active_width] if i > 0 else None
+            residual = h[..., :active_width] if i > 0 and self.use_residual else None
             h = self._linear_prefix(self.layers[i], h, active_width, in_width)
             norm = self.norms[i]
             h = F.layer_norm(
@@ -89,7 +97,16 @@ class FixedElasticMLP(nn.Module):
     into one nested global state.
     """
 
-    def __init__(self, input_dim: int, num_classes: int, depth: int, width: int, offset: int = 0):
+    def __init__(
+        self,
+        input_dim: int,
+        num_classes: int,
+        depth: int,
+        width: int,
+        offset: int = 0,
+        layer_offsets: tuple[int, ...] | None = None,
+        use_residual: bool = True,
+    ):
         super().__init__()
         if depth < 1 or width < 1:
             raise ValueError("depth and width must be positive")
@@ -98,6 +115,12 @@ class FixedElasticMLP(nn.Module):
         self.max_depth = int(depth)
         self.hidden_dim = int(width)
         self.subnet_offset = int(offset)
+        self.subnet_layer_offsets = tuple(
+            int(item) for item in (layer_offsets or (offset,) * depth)
+        )
+        if len(self.subnet_layer_offsets) != depth:
+            raise ValueError("layer_offsets must contain one start index per hidden layer")
+        self.use_residual = bool(use_residual)
         self.layers = nn.ModuleList(
             [
                 nn.Linear(input_dim if i == 0 else width, width)
@@ -121,7 +144,7 @@ class FixedElasticMLP(nn.Module):
             layer = self.layers[i]
             norm = self.norms[i]
             in_width = self.input_dim if i == 0 else active_width
-            residual = h[..., :active_width] if i > 0 else None
+            residual = h[..., :active_width] if i > 0 and self.use_residual else None
             h = F.linear(h[..., :in_width], layer.weight[:active_width, :in_width], layer.bias[:active_width])
             h = F.layer_norm(
                 h,
@@ -167,6 +190,10 @@ class LegacyMLP(_BaseElasticMLP):
 def build_model(variant: str, input_dim: int, num_classes: int, max_depth: int, hidden_dim: int):
     if variant == "elastic":
         return ElasticMLP(input_dim, num_classes, max_depth, hidden_dim)
+    if variant == "elastic_plain":
+        return ElasticMLP(
+            input_dim, num_classes, max_depth, hidden_dim, use_residual=False
+        )
     if variant == "legacy":
         return LegacyMLP(input_dim, num_classes, max_depth, hidden_dim)
     raise ValueError("variant must be 'elastic' or 'legacy'")
@@ -179,6 +206,7 @@ def build_fixed_subnet(
     depth: int,
     width: int,
     offset: int = 0,
+    layer_offsets: tuple[int, ...] | None = None,
 ) -> nn.Module:
     """Build only the parameters required by one client subnet.
 
@@ -187,7 +215,24 @@ def build_fixed_subnet(
     LayerNorm contract is independent of cross-client running statistics.
     """
     if variant == "elastic":
-        return FixedElasticMLP(input_dim, num_classes, depth, width, offset=offset)
+        return FixedElasticMLP(
+            input_dim,
+            num_classes,
+            depth,
+            width,
+            offset=offset,
+            layer_offsets=layer_offsets,
+        )
+    if variant == "elastic_plain":
+        return FixedElasticMLP(
+            input_dim,
+            num_classes,
+            depth,
+            width,
+            offset=offset,
+            layer_offsets=layer_offsets,
+            use_residual=False,
+        )
     if variant == "legacy":
         return LegacyMLP(input_dim, num_classes, depth, width)
     raise ValueError("variant must be 'elastic' or 'legacy'")
@@ -220,6 +265,11 @@ def load_subnet_state(
     """
     current = model.state_dict()
     offset = int(getattr(model, "subnet_offset", 0))
+    offsets = tuple(getattr(model, "subnet_layer_offsets", ()))
+
+    def layer_offset(index: int) -> int:
+        return int(offsets[index]) if index < len(offsets) else offset
+
     width = int(getattr(model, "hidden_dim", 0))
     tensors = {}
     for key, target in current.items():
@@ -236,15 +286,31 @@ def load_subnet_state(
         ):
             parts = key.split(".")
             if key.startswith("layers.") and key.endswith("weight") and int(parts[1]) > 0:
-                slices = (slice(offset, offset + target_shape[0]), slice(offset, offset + target_shape[1]))
+                layer_index = int(parts[1])
+                slices = (
+                    slice(layer_offset(layer_index), layer_offset(layer_index) + target_shape[0]),
+                    slice(layer_offset(layer_index - 1), layer_offset(layer_index - 1) + target_shape[1]),
+                )
             elif key.startswith("layers.") and key.endswith("weight"):
-                slices = (slice(offset, offset + target_shape[0]), slice(0, target_shape[1]))
+                layer_index = int(parts[1])
+                slices = (
+                    slice(layer_offset(layer_index), layer_offset(layer_index) + target_shape[0]),
+                    slice(0, target_shape[1]),
+                )
             elif key.startswith("classifier.") and key.endswith("weight"):
-                slices = (slice(0, target_shape[0]), slice(offset, offset + target_shape[1]))
+                last_offset = layer_offset(len(offsets) - 1) if offsets else offset
+                slices = (
+                    slice(0, target_shape[0]),
+                    slice(last_offset, last_offset + target_shape[1]),
+                )
             elif key.startswith("norms.") and source.ndim == 1:
-                slices = (slice(offset, offset + target_shape[0]),)
+                layer_index = int(parts[1])
+                start = layer_offset(layer_index)
+                slices = (slice(start, start + target_shape[0]),)
             elif key.startswith("layers.") and source.ndim == 1:
-                slices = (slice(offset, offset + target_shape[0]),)
+                layer_index = int(parts[1])
+                start = layer_offset(layer_index)
+                slices = (slice(start, start + target_shape[0]),)
             else:
                 slices = tuple(slice(0, size) for size in target_shape)
             sliced = source[slices]

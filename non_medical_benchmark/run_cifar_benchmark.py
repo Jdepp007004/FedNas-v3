@@ -8,6 +8,7 @@ from collections import defaultdict
 from pathlib import Path
 
 from .cifar import load_cifar_bundle, run_cifar_experiment
+from .provenance import build_dataset_run_manifest
 from .stats import confidence_interval, paired_interval
 
 
@@ -20,6 +21,15 @@ def _summary(results: list[dict]) -> list[dict]:
         finals = [result["final"] for result in seeded_results]
         accuracy = [float(item["selected_test_accuracy"]) for item in finals]
         accuracy_stats = confidence_interval(accuracy, bounds=(0.0, 1.0))
+
+        def history_mean(key: str) -> float:
+            values = [
+                float(round_item[key])
+                for result in seeded_results
+                for round_item in result["history"]
+            ]
+            return sum(values) / len(values) if values else 0.0
+
         rows.append(
             {
                 "variant": "elastic_cnn",
@@ -30,10 +40,32 @@ def _summary(results: list[dict]) -> list[dict]:
                 "test_accuracy_ci95_low": accuracy_stats["ci95_low"],
                 "test_accuracy_ci95_high": accuracy_stats["ci95_high"],
                 "val_accuracy_mean": sum(float(item["selected_val_accuracy"]) for item in finals) / len(finals),
-                "upload_bytes_per_round_mean": sum(float(item["total_upload_bytes"]) for item in finals) / len(finals),
-                "download_bytes_per_round_mean": sum(float(item["total_download_bytes"]) for item in finals) / len(finals),
-                "active_flops_per_client_mean": sum(float(item["mean_active_flops"]) for item in finals) / len(finals),
-                "client_parameters_mean": sum(float(item["mean_client_parameters"]) for item in finals) / len(finals),
+                "upload_bytes_per_round_mean": history_mean("total_upload_bytes"),
+                "download_bytes_per_round_mean": history_mean("total_download_bytes"),
+                "upload_bytes_per_run_mean": sum(
+                    sum(int(item["total_upload_bytes"]) for item in result["history"])
+                    for result in seeded_results
+                ) / len(seeded_results),
+                "download_bytes_per_run_mean": sum(
+                    sum(int(item["total_download_bytes"]) for item in result["history"])
+                    for result in seeded_results
+                ) / len(seeded_results),
+                "active_forward_flops_per_example_per_client_mean": history_mean("mean_active_flops"),
+                "client_parameters_mean": history_mean("mean_client_parameters"),
+                "selected_deployed_parameters_mean": sum(
+                    float(item["selected_deployed_parameters"]) for item in finals
+                ) / len(finals),
+                "selected_deployed_flops_per_example_mean": sum(
+                    float(item["selected_deployed_flops"]) for item in finals
+                ) / len(finals),
+                "parameter_coordinate_coverage_mean": sum(
+                    float(result["parameter_coordinate_coverage"])
+                    for result in seeded_results
+                ) / len(seeded_results),
+                "parameter_coordinate_updates_cv_mean": sum(
+                    float(result["parameter_coordinate_updates_cv"] or 0.0)
+                    for result in seeded_results
+                ) / len(seeded_results),
                 "wall_clock_seconds_mean": sum(
                     float(result.get("wall_clock_seconds", 0.0))
                     for result in seeded_results
@@ -46,12 +78,20 @@ def _summary(results: list[dict]) -> list[dict]:
             row["upload_reduction_vs_fedavg"] = 1.0 - row["upload_bytes_per_round_mean"] / max(
                 baseline["upload_bytes_per_round_mean"], 1.0
             )
-            row["flops_reduction_vs_fedavg"] = 1.0 - row["active_flops_per_client_mean"] / max(
-                baseline["active_flops_per_client_mean"], 1.0
+            row["flops_reduction_vs_fedavg"] = 1.0 - row[
+                "active_forward_flops_per_example_per_client_mean"
+            ] / max(
+                baseline["active_forward_flops_per_example_per_client_mean"], 1.0
             )
             row["parameter_reduction_vs_fedavg"] = 1.0 - row["client_parameters_mean"] / max(
                 baseline["client_parameters_mean"], 1.0
             )
+            row["deployed_parameter_reduction_vs_fedavg"] = 1.0 - row[
+                "selected_deployed_parameters_mean"
+            ] / max(baseline["selected_deployed_parameters_mean"], 1.0)
+            row["deployed_flops_reduction_vs_fedavg"] = 1.0 - row[
+                "selected_deployed_flops_per_example_mean"
+            ] / max(baseline["selected_deployed_flops_per_example_mean"], 1.0)
             if row["strategy"] != "fedavg":
                 baseline_results = {
                     result["seed"]: result["final"]
@@ -89,7 +129,11 @@ def main() -> None:
     parser.add_argument(
         "--strategies",
         nargs="+",
-        choices=("fedavg", "fedprox", "heterofl", "fjord", "fedrolex", "elastic", "maxnet", "cc_efl"),
+        choices=(
+            "fedavg", "fedprox", "heterofl", "fjord", "fedrolex", "elastic",
+            "maxnet", "cc_efl", "cc_efl_no_prox", "cc_efl_uniform",
+            "cc_efl_random_window", "cc_efl_dynamic",
+        ),
         default=("fedavg", "heterofl", "fjord", "fedrolex", "cc_efl"),
     )
     parser.add_argument("--output", default=None)
@@ -124,6 +168,25 @@ def main() -> None:
         "test_samples": len(bundle.test_dataset),
         "rounds": args.rounds,
         "seeds": list(args.seeds),
+        "run_manifest": build_dataset_run_manifest(
+            dataset=args.dataset,
+            splits={
+                "train": bundle.train_dataset,
+                "validation": bundle.val_dataset,
+                "test": bundle.test_dataset,
+            },
+            arguments={
+                "strategies": list(args.strategies),
+                "seeds": list(args.seeds),
+                "rounds": args.rounds,
+                "clients": args.clients,
+                "max_train": args.max_train,
+                "max_test": args.max_test,
+                "batch_size": args.batch_size,
+                "local_epochs": args.local_epochs,
+                "learning_rate": args.learning_rate,
+            },
+        ),
         "summary": _summary(results),
         "results": results,
     }

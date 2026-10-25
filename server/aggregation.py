@@ -119,7 +119,7 @@ def aggregate_partial_fedavg(
         raise EmptyRoundError("No client updates to aggregate.")
     if len(client_updates) != len(sample_counts):
         raise ValueError("client_updates and sample_counts must have the same length.")
-    if any(int(count) < 0 for count in sample_counts):
+    if any(float(count) < 0 for count in sample_counts):
         raise ValueError("sample_counts must be non-negative.")
     if sum(sample_counts) <= 0:
         raise EmptyRoundError("All clients report 0 samples.")

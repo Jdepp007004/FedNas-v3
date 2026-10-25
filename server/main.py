@@ -89,6 +89,23 @@ async def lifespan(app: FastAPI):
     # ── Ensure default project exists ─────────────────────────────────────────
     _ensure_default_project()
 
+    # Restore the server-side validation loaders for user-created projects.
+    for project in read_db().get("projects", []):
+        if project.get("model_family") != "elastic_tabular":
+            continue
+        try:
+            client_path = os.path.join(os.path.dirname(__file__), "..", "client")
+            if client_path not in sys.path:
+                sys.path.insert(0, client_path)
+            from tabular_fl import build_eval_loader
+            dataset_name = (project.get("validation_dataset") or {}).get("filename", "")
+            dataset_path = os.path.join(os.path.dirname(__file__), "uploads", project["proj_id"], dataset_name)
+            if dataset_name and os.path.isfile(dataset_path):
+                val_loader = build_eval_loader(dataset_path, project["task_config"])
+                set_val_dataloader(val_loader, project["proj_id"])
+        except Exception as exc:
+            print(f"[!] Could not restore validation data for {project.get('name', project.get('proj_id'))}: {exc}")
+
     yield  # Application runs
 
     print("[*] Server shutting down.")
@@ -211,6 +228,12 @@ async def dashboard(request: Request):
 async def host_console(request: Request):
     """Host console for approvals, uploads, resources, and round planning."""
     return templates.TemplateResponse("host.html", {"request": request})
+
+
+@app.get("/create", response_class=HTMLResponse)
+async def create_workspace(request: Request):
+    """Self-serve setup for a federated tabular model."""
+    return templates.TemplateResponse("create_project.html", {"request": request})
 
 
 @app.get("/client", response_class=HTMLResponse)

@@ -169,13 +169,37 @@ def _prepare_tabular(
         X_holdout_df[col] = X_holdout_df[col].replace({"?": fill, "nan": fill})
 
     if categorical_cols:
-        combined = pd.concat(
-            [X_train_df[categorical_cols], X_holdout_df[categorical_cols]], ignore_index=True
+        # Learn the category vocabulary from training data only. A holdout
+        # category that was not observed during training is represented by an
+        # all-zero one-hot vector for that feature, as with
+        # OneHotEncoder(handle_unknown="ignore").
+        train_categories = {
+            col: tuple(sorted(X_train_df[col].unique().tolist()))
+            for col in categorical_cols
+        }
+        train_cat_frame = pd.DataFrame(
+            {
+                col: pd.Categorical(X_train_df[col], categories=train_categories[col])
+                for col in categorical_cols
+            },
+            index=X_train_df.index,
         )
-        encoded = pd.get_dummies(combined, columns=categorical_cols, dtype=np.float32)
-        train_cat = encoded.iloc[: len(X_train_df)].to_numpy(dtype=np.float32)
-        holdout_cat = encoded.iloc[len(X_train_df) :].to_numpy(dtype=np.float32)
-        feature_names = tuple(encoded.columns)
+        holdout_cat_frame = pd.DataFrame(
+            {
+                col: pd.Categorical(X_holdout_df[col], categories=train_categories[col])
+                for col in categorical_cols
+            },
+            index=X_holdout_df.index,
+        )
+        train_encoded = pd.get_dummies(
+            train_cat_frame, columns=categorical_cols, dtype=np.float32
+        )
+        holdout_encoded = pd.get_dummies(
+            holdout_cat_frame, columns=categorical_cols, dtype=np.float32
+        ).reindex(columns=train_encoded.columns, fill_value=0.0)
+        train_cat = train_encoded.to_numpy(dtype=np.float32)
+        holdout_cat = holdout_encoded.to_numpy(dtype=np.float32)
+        feature_names = tuple(str(name) for name in train_encoded.columns)
     else:
         train_cat = np.empty((len(X_train_df), 0), dtype=np.float32)
         holdout_cat = np.empty((len(X_holdout_df), 0), dtype=np.float32)
@@ -184,18 +208,16 @@ def _prepare_tabular(
     X_train = np.hstack([train_num, train_cat]).astype(np.float32)
     X_holdout = np.hstack([holdout_num, holdout_cat]).astype(np.float32)
 
-    label_encoder = LabelEncoder().fit(
-        pd.concat([y_train_raw.astype(str), y_holdout_raw.astype(str)], ignore_index=True)
-        .str.strip()
-        .str.lower()
-        .str.rstrip(".")
-    )
+    train_labels = y_train_raw.astype(str).str.strip().str.lower().str.rstrip(".")
+    holdout_labels = y_holdout_raw.astype(str).str.strip().str.lower().str.rstrip(".")
+    label_encoder = LabelEncoder().fit(train_labels)
     y_train = label_encoder.transform(
-        y_train_raw.astype(str).str.strip().str.lower().str.rstrip(".")
+        train_labels
     )
-    y_holdout = label_encoder.transform(
-        y_holdout_raw.astype(str).str.strip().str.lower().str.rstrip(".")
-    )
+    try:
+        y_holdout = label_encoder.transform(holdout_labels)
+    except ValueError as exc:
+        raise ValueError("holdout contains a label not present in training data") from exc
     return X_train, y_train, X_holdout, y_holdout, feature_names, tuple(label_encoder.classes_)
 
 

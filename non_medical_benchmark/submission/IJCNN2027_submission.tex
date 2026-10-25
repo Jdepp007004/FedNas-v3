@@ -1,0 +1,141 @@
+\documentclass[conference]{IEEEtran}
+\usepackage{cite}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{url}
+
+\title{Capacity-Resolved Evaluation of Small Federated Clients for Shared-Model Scaling}
+
+\author{\IEEEauthorblockN{Anonymous Authors}}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Small clients may be unable to train a full federated model, yet deployment quality and shared-model quality are often reported as one endpoint. We benchmark seven strategies across 105 paired runs on UCI Human Activity Recognition (HAR), then confirm FedAvg, HeteroFL, and FjORD on ten fresh seeds with four CPU-affinity-limited workers. The shared HAR MLP has 2.81M parameters; the workers receive 1, 2, 4, and 8 logical processors. In the fresh eight-round confirmation, FjORD's 1-thread client selects a 13,686-parameter model with test macro-F1 0.889 (95\% CI 0.855--0.923). Across all four client profiles, its capacity-selected macro-F1 is 0.905 (0.885--0.926), taking a median 9.42 s per run; full-model FedAvg takes 30.52 s and scores 0.908 on the full-model endpoint. FjORD uses 29,958 active client parameters per round on average, 98.93\% fewer than the server model. However, its full supernet scores 0.811 and covers only 2.23\% of server coordinates. A five-seed Digits check also finds a strong client endpoint (FjORD 0.810 macro-F1) but weak full-supernet quality (0.623 versus 0.964 for full FedAvg). A 16$\times$ HAR follow-up reaches 10.33M server parameters but remains sparsely updated. The workers share one host; these simulations do not measure physical-device memory, energy, or network latency, and do not demonstrate convergence of a large global model. We make an empirical resource--utility contribution, not a new-optimizer claim. Text in this manuscript was prepared with AI assistance [8].
+\end{abstract}
+
+\begin{IEEEkeywords}
+federated learning, heterogeneous clients, resource-constrained learning, model scaling, reproducibility
+\end{IEEEkeywords}
+
+\section{Introduction}
+Federated learning (FL) allows clients to optimize a shared model while keeping raw examples local \cite{mcmahan}. In practice, clients differ in compute and storage capacity. A standard FedAvg client trains the complete model, so its resource requirement grows with the server model. Heterogeneous-model methods instead train and aggregate client-specific submodels, including HeteroFL, FjORD, FedRolex, and SuperFedNAS/MaxNet \cite{heterofl,fjord,fedrolex,superfednas}. These approaches motivate an empirical question: as the shared model grows while client budgets remain fixed, what happens to elapsed training time, the model each client can deploy, and the shared model's quality?
+
+This paper answers that question with a capacity-resolved, single-host benchmark. Four worker processes are affinity-limited to 1, 2, 4, and 8 logical processors. We compare full-model FedAvg and FedProx with HeteroFL, FjORD, FedRolex, MaxNet-style sampling, and CC-EFL at three main server scales, then extend four methods to 16$\times$ with fixed client tiers. The evidence includes the 105-run seven-method matrix, a fresh ten-seed 8$\times$ HAR confirmation, a five-seed Digits workload check, and a 16$\times$ size follow-up. We report each client-capacity endpoint separately from the full shared-model endpoint and include device-specific parameter and timing profiles. CC-EFL remains a comparator assembled from known choices; the paper's contribution is the controlled resource--utility evaluation, not a new optimizer. [8]
+
+\section{Related Work and Scope}
+FedAvg averages locally trained models \cite{mcmahan}; FedProx adds a proximal penalty to mitigate local drift \cite{fedprox}. HeteroFL trains nested-width client models, FjORD uses ordered dropout and self-distillation, and FedRolex rotates extracted submodels through a larger server model \cite{heterofl,fjord,fedrolex}. SuperFedNAS introduces MaxNet sampling and largest-subnetwork prioritization for federated supernet training \cite{superfednas}. Our CC-EFL integration combines fixed-capacity subnet materialization, rotating channel windows, largest-tier aggregation priority, and FedProx regularization. We do not claim these components are individually novel, nor that our implementation is a bit-for-bit reproduction of the cited systems.
+
+The contribution is a controlled resource--utility measurement on one workload, rather than a new federated optimization algorithm. Prior work already demonstrates heterogeneous federated training, including on much larger models. Our narrower claim is that four CPU-affinity-limited worker processes can complete training rounds for a shared MLP up to 10.33M parameters using submodels whose average active size is about 30k parameters, and that time and accuracy depend strongly on the strategy and endpoint measured. [8]
+
+\section{Benchmark Design}
+\subsection{Workload and Methods}
+We use the UCI Human Activity Recognition smartphone dataset: 561 input features and six activity classes, with 7,352 training, 1,473 validation, and 1,474 test examples \cite{har}. Client data are partitioned with seeded Dirichlet label skew ($\alpha=0.5$). Each method trains for eight rounds with one local epoch per round, batch size 128, and Adam; validation macro-F1 selects each capacity's deployment tier. Seeds 1--5 are paired across methods and scales.
+
+The seven strategies are FedAvg, FedProx, HeteroFL, FjORD, FedRolex, MaxNet, and CC-EFL. The main matrix uses maximum hidden widths 96, 384, and 768 at scales 1$\times$, 4$\times$, and 8$\times$; corresponding full-model sizes are 92,742, 813,318, and 2,806,278 parameters. A separate five-seed follow-up tests width 1,536 (10,331,142 parameters) with four methods. Heterogeneous client tiers stay fixed as the server grows. At 8$\times$, the four fixed tiers have depth/width (1,24), (1,24), (2,48), and (5,72); the same tiers are used at 16$\times$. FedAvg and FedProx train the complete server model at every client; the other methods materialize the assigned client subnet.
+
+\subsection{Worker and Host Specifications}
+The host is an Intel Core Ultra 5 125H with 14 physical cores, 18 logical processors, 15.6 GiB RAM, Windows, and CPU-only PyTorch 2.9.0. The coordinator reserves three logical processors; workers use disjoint masks [0], [1,2], [3--6], and [7--14], verified by the harness. Each worker's PyTorch thread count matches its affinity allocation. These are virtual clients sharing one host, not separate computers; affinity does not reserve exclusive physical cores against other operating-system activity.
+
+\begin{table*}[t]
+\caption{Four fixed client profiles and ten-seed FjORD deployment results on 8$\times$ HAR. FP32 weights exclude runtime state; local timing is mean per round.}
+\label{tab:devices}
+\centering
+\scriptsize
+\begin{tabular}{@{}lccrrcc@{}}
+\toprule
+Client (threads) & Tier ($d\times w$) & Active params & Selected params & FjORD macro-F1 (95\% CI) & Accuracy & Local s/round FjORD / FedAvg \\
+\midrule
+edge-1t (1) & $1\times24$ & 13,686 & 13,686 & .889 (.855--.923) & .896 & .048 / 1.874 \\
+low-2t (2) & $1\times24$ & 13,686 & 13,686 & .889 (.855--.923) & .896 & .058 / 2.035 \\
+mid-4t (4) & $2\times48$ & 29,814 & 18,539 & .919 (.904--.933) & .920 & .135 / 1.751 \\
+high-8t (8) & $5\times72$ & 62,646 & 23,744 & .924 (.915--.934) & .925 & .198 / 1.004 \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\subsection{Endpoints and Timing}
+We report two distinct test endpoints. The \emph{capacity-selected deployment score} is the mean macro-F1 across the four fixed client profiles, where each profile uses the smallest feasible tier within 0.2 percentage points of its best validation score. A \emph{full-supernet score} evaluates the complete server model. In particular, a capacity-selected FedAvg score is a post-training slice of a full-model FedAvg run; it is not the full-model FedAvg score. Intervals are two-sided seed-level Student-$t$ intervals: five seeds for the main matrix, Digits check, and 16$\times$ extension, and ten fresh seeds for the 8$\times$ HAR confirmation. They are descriptive, unadjusted intervals.
+
+Wall-clock time is the median across the corresponding five- or ten-seed eight-round block and includes client training, aggregation, validation, and final evaluation. It excludes the shared worker-pool startup. Per-client local time covers model construction, data-loader setup, and training, but excludes aggregation and inter-process serialization. The coordinator and clients execute locally, so reported times are simulation timings and exclude network transfer latency. Parameter and FLOP reductions are model-based estimates, not measured peak memory or energy savings. [8]
+
+\section{Results}
+\subsection{Time and Capacity-Selected Accuracy}
+Table~\ref{tab:tradeoff} reports median elapsed seconds and mean capacity-selected test macro-F1 for every method and scale. At 8$\times$, FedAvg takes 36.4 s, compared with 10.2 s for HeteroFL, 16.9 s for FjORD, and 17.9 s for CC-EFL. Relative to full-model FedAvg, CC-EFL completes the eight-round run in about half the time. HeteroFL is both faster and more accurate than CC-EFL on this endpoint, while FjORD achieves the highest capacity-selected score. The benchmark therefore supports subnet participation and a time--utility trade-off, but not CC-EFL superiority.
+
+\begin{table*}[t]
+\caption{Median seconds / capacity-selected test macro-F1 / accuracy across five seeds. The 16x follow-up includes four methods only.}
+\label{tab:tradeoff}
+\centering
+\footnotesize
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+Strategy & 1$\times$ (92,742) & 4$\times$ (813,318) & 8$\times$ (2,806,278) & 16$\times$ (10,331,142) \\
+\midrule
+FedAvg & 6.7 / .738 / .756 & 15.5 / .668 / .695 & 36.4 / .658 / .695 & 56.9 / .737 / .753 \\
+FedProx & 6.7 / .722 / .751 & 14.8 / .665 / .691 & 36.7 / .651 / .689 & -- \\
+HeteroFL & 4.7 / .879 / .887 & 5.7 / .851 / .864 & 10.2 / .862 / .874 & 20.1 / .857 / .869 \\
+FjORD & 4.6 / .911 / .916 & 5.2 / .897 / .905 & 16.9 / .902 / .908 & 20.3 / .882 / .890 \\
+FedRolex & 5.8 / .828 / .848 & 5.1 / .825 / .849 & 13.4 / .819 / .840 & -- \\
+MaxNet & 6.6 / .885 / .892 & 4.6 / .875 / .885 & 13.1 / .870 / .881 & -- \\
+CC-EFL & 4.7 / .830 / .849 & 5.0 / .833 / .853 & 17.9 / .828 / .849 & 30.0 / .801 / .828 \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+\subsection{The 8$\times$ Shared-Model Endpoint}
+Table~\ref{tab:full} separates each method's client deployment score from the score of the complete shared model. At 8$\times$, the subnet methods average 29,958 active trainable parameters per client-round, against 2,806,278 for FedAvg and FedProx (98.9\% fewer parameters and estimated forward FLOPs). CC-EFL reaches a capacity-selected macro-F1 of 0.828 (95\% CI 0.785--0.871; accuracy 0.849), versus 0.658 for the capacity-selected slice of FedAvg. However, the complete CC-EFL supernet scores 0.829 macro-F1, versus 0.905 for full-model FedAvg. CC-EFL updates only 2.6\% of server parameter coordinates in eight rounds. This low coverage means the client deployment result cannot be interpreted as convergence of the enlarged global model. At 16$\times$, the shared model has 10,331,142 parameters (39.41 MiB of FP32 weights) while subnet clients still average 29,958 active parameters. HeteroFL and FjORD each complete in about 20 s and score 0.857 and 0.882; CC-EFL takes 30.0 s and scores 0.801. CC-EFL full-supernet macro-F1 is 0.825 versus 0.904 for full-model FedAvg, and coordinate coverage is 0.70%. The additional scale extends the CPU simulation but does not remove the sparse-update limitation. Unadjusted 95% macro-F1 intervals at 16$\times$ are 0.662--0.811 (FedAvg), 0.808--0.906 (HeteroFL), 0.816--0.948 (FjORD), and 0.750--0.853 (CC-EFL).
+
+\begin{table*}[t]
+\caption{8$\times$ endpoint separation. Capacity-selected macro-F1 intervals are unadjusted 95\% intervals over five paired seeds. Full-model columns evaluate the complete shared supernet.}
+\label{tab:full}
+\centering
+\footnotesize
+\begin{tabular}{@{}lccc r@{}}
+\toprule
+Strategy & Deployment macro-F1 (95\% CI) & Deployment accuracy & Full-model F1 / accuracy & Coordinates covered \\
+\midrule
+FedAvg & 0.658 (0.610--0.705) & 0.695 & 0.905 / 0.907 & 100.0\% \\
+FedProx & 0.651 (0.577--0.726) & 0.689 & 0.913 / 0.915 & 100.0\% \\
+HeteroFL & 0.862 (0.812--0.912) & 0.874 & 0.824 / 0.834 & 2.2\% \\
+FjORD & 0.902 (0.842--0.961) & 0.908 & 0.762 / 0.793 & 2.2\% \\
+FedRolex & 0.819 (0.765--0.872) & 0.840 & 0.836 / 0.844 & 2.6\% \\
+MaxNet & 0.870 (0.823--0.918) & 0.881 & 0.814 / 0.836 & 2.2\% \\
+CC-EFL & 0.828 (0.785--0.871) & 0.849 & 0.829 / 0.848 & 2.6\% \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+These measurements reveal two different questions. On the client endpoint, width/depth-specialized training can produce useful small deployments from a larger shared parameterization. On the full-model endpoint, sparse updates leave much of the expanded server model untrained. A deployment score alone would hide this distinction. [8]
+
+\subsection{Ten-seed HAR confirmation}
+We repeated the 8$\times$ FedAvg, HeteroFL, and FjORD comparison on ten fresh paired seeds (6--15). FjORD's capacity-selected deployment reaches macro-F1 0.905 (95\% CI 0.885--0.926) and accuracy 0.909 in a median 9.42 s per eight rounds. Full-model FedAvg takes 30.52 s and reaches macro-F1 0.908 / accuracy 0.911. HeteroFL takes 7.94 s and reaches deployment macro-F1 0.848. FjORD averages 29,958 active client parameters versus 2,806,278 for FedAvg, a 98.93\% reduction; its mean selected deployment contains 17,414 parameters. The median paired time ratio is 2.97, and the capacity-selected FjORD minus capacity-sliced FedAvg macro-F1 difference is +0.245 (95\% CI +0.188 to +0.303).
+
+For the one-thread client, FjORD selects a 13,686-parameter deployment with macro-F1 0.889 (95\% CI 0.855--0.923) and accuracy 0.896; mean local training time is 0.048 s per round, compared with 1.874 s for full-model FedAvg on the same worker. Table~\ref{tab:devices} gives the other profiles. FjORD deployment versus full FedAvg yields a descriptive paired difference of $-0.003$ (95\% CI $-0.021$ to $+0.015$), but this is a cross-endpoint comparison, not a formal non-inferiority test. The full FjORD supernet trails full FedAvg by 0.098 macro-F1 (95\% CI $-0.188$ to $-0.008$) after only 2.23\% coordinate coverage.
+
+\subsection{Workload and server-scale checks}
+A five-seed Digits check uses the same CPU profiles at 8$\times$ (830,474 server parameters). FjORD averages 4,282 active client parameters, reaches capacity-selected macro-F1 0.810 (95\% CI 0.743--0.877), and takes a median 5.64 s per eight rounds. Full-model FedAvg reaches 0.964 macro-F1, while the FjORD full supernet reaches 0.623. Thus the strong HAR client endpoint does not generalize to global-model quality. A separate five-seed 16$\times$ HAR follow-up has 10,331,142 server parameters; FjORD and HeteroFL take 20.3 and 20.1 s and reach capacity-selected macro-F1 0.882 and 0.857. Both cover less than 0.7\% of coordinates. These are short, single-host simulations. [8]
+
+\section{Discussion and Limitations}
+The CPU-affinity benchmark demonstrates that lower-compute worker processes can contribute bounded subnet updates in a short simulation. It does not demonstrate execution on four physical edge devices: workers share a 14-core host, no per-worker RAM limit is enforced, and network latency, energy, thermal throttling, and intermittent connectivity are not measured. The largest model has 10.33M parameters and is an MLP for HAR, not a foundation model. At 8$\times$, FjORD's ten-seed deployment result is strong but its full supernet covers only 2.23\% of coordinates; at 16$\times$, the subnet methods cover at most 0.70\%. These results establish small-client participation and deployment quality for this simulation, not convergence of the expanded global model.
+
+Accuracy and timing are specific to these datasets, CPU, and software configuration. The primary width/strategy grid and the 16$\times$ follow-up use five seeds; the focused 8$\times$ HAR confirmation uses ten seeds and the Digits check uses five. Intervals are not adjusted across the full method-by-scale grid, and the implementations are literature-inspired baselines rather than independently validated reproductions. The Adult and Bank CPU-affinity extension was not completed. Future work should repeat the study on separate physical devices with enforced memory budgets and network emulation, test more workloads, and measure time to a prespecified full-model quality target. [8]
+
+\section{Conclusion}
+We presented a capacity-resolved four-worker CPU-affinity benchmark with a seven-method scaling sweep, a ten-seed HAR confirmation, a Digits workload check, and a 16$\times$ extension. In the HAR confirmation, the 1-thread profile trains a 13,686-parameter FjORD subnet with macro-F1 0.889, and all four client profiles average 0.905 while the eight-round simulation runs about three times faster than full-model FedAvg. The complete FjORD supernet remains under-covered and below full-model FedAvg. The evidence supports a narrow claim: CPU-constrained virtual clients can contribute small subnet updates to a larger shared MLP and retain useful client-deployment quality on HAR. It does not establish physical-device performance, foundation-model training, or convergence of the expanded global model. [8]
+
+\section*{Acknowledgment}
+Text in this manuscript was prepared with assistance from OpenAI Codex [8]. The authors are responsible for verifying all experimental descriptions, results, and claims.
+
+\begin{thebibliography}{8}
+\bibitem{har} D. Anguita, A. Ghio, L. Oneto, X. Parra, and J. L. Reyes-Ortiz, A public domain dataset for human activity recognition using smartphones, in \emph{Proc. ESANN}, 2013.
+\bibitem{mcmahan} B. McMahan, E. Moore, D. Ramage, S. Hampson, and B. A. y Arcas, ``Communication-efficient learning of deep networks from decentralized data,'' in \emph{Proc. AISTATS}, 2017, pp. 1273--1282.
+\bibitem{fedprox} T. Li, A. K. Sahu, M. Zaheer, M. Sanjabi, A. Talwalkar, and V. Smith, ``Federated optimization in heterogeneous networks,'' in \emph{Proc. MLSys}, 2020.
+\bibitem{heterofl} E. Diao, J. Ding, and V. Tarokh, ``HeteroFL: Computation and communication efficient federated learning for heterogeneous clients,'' in \emph{Proc. ICLR}, 2021.
+\bibitem{fjord} S. Horv\'ath, S. Laskaridis, M. Almeida, I. Leontiadis, S. Venieris, and N. Lane, ``FjORD: Fair and accurate federated learning under heterogeneous targets with ordered dropout,'' in \emph{Advances in Neural Information Processing Systems}, vol. 34, 2021.
+\bibitem{fedrolex} S. Alam, L. Liu, M. Yan, and M. Zhang, FedRolex: Model-heterogeneous federated learning with rolling sub-model extraction, in \emph{Advances in Neural Information Processing Systems}, vol. 35, 2022.
+\bibitem{superfednas} A. Khare \emph{et al.}, ``SuperFedNAS: Cost-efficient federated neural architecture search for on-device inference,'' in \emph{Proc. ECCV}, 2024.
+\bibitem{ai} OpenAI, ``Codex,'' AI-assisted coding and writing system, accessed Oct. 2026. [Online]. Available: \url{https://openai.com/codex/}
+\end{thebibliography}
+\end{document}

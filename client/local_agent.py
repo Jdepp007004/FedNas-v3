@@ -127,9 +127,13 @@ class _LocalHandler(BaseHTTPRequestHandler):
         self.send_response(status)
         self.send_header("Content-Type", content_type)
         self.send_header("Content-Length", str(length))
-        self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Headers", "Content-Type")
-        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        origin = self.headers.get("Origin", "")
+        origin_host = urlparse(origin).hostname if origin else None
+        if origin_host in {"127.0.0.1", "localhost", "::1"}:
+            self.send_header("Access-Control-Allow-Origin", origin)
+            self.send_header("Vary", "Origin")
+            self.send_header("Access-Control-Allow-Headers", "Content-Type")
+            self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         self.end_headers()
 
     def _send_json(self, value: dict, status: int = 200) -> None:
@@ -218,13 +222,18 @@ class _LocalHandler(BaseHTTPRequestHandler):
                     "--csv", str(csv_path),
                     "--no-ui",
                 ]
+                worker_env = os.environ.copy()
+                if payload.get("token"):
+                    worker_env["FL_CLIENT_TOKEN"] = str(payload["token"])
+                if payload.get("proj_id"):
+                    command.extend(["--proj", str(payload["proj_id"])])
                 for key, flag in (("available_ram_gb", "--ram"), ("available_cpu_cores", "--cores"),
                                   ("dedicated_ram_gb", "--dedicated-ram"), ("dedicated_cpu_cores", "--dedicated-cores")):
                     if payload.get(key) not in (None, ""):
                         command.extend([flag, str(payload[key])])
                 if payload.get("gpu_available"):
                     command.append("--gpu")
-                process = subprocess.Popen(command, cwd=str(REPO_ROOT), env=os.environ.copy())
+                process = subprocess.Popen(command, cwd=str(REPO_ROOT), env=worker_env)
                 with _state_lock:
                     _state.update({
                         "worker": process,

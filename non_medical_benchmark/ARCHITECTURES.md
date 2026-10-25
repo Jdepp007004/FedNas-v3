@@ -13,12 +13,18 @@ measurement stay controlled.
 |---|---|---|
 | `fedavg` | Full model on every client; weighted average | Accuracy/compute reference |
 | `fedprox` | Full model plus `mu/2 ||w-w_t||²` during local training | Proximal stabilization under non-IID data |
-| `heterofl` | Static client tiers, ordered nested width/depth prefixes, coordinate-wise partial aggregation | Heterogeneous local models without rotation |
+| `heterofl` | Fixed per-client tiers, ordered nested width/depth prefixes, coordinate-wise partial aggregation | Heterogeneous local models without channel rotation |
 | `fjord` | Ordered prefix dropout over widths on each tier and temperature-2 self-distillation from the tier's largest ordered subnet | Ordered knowledge preservation for small targets |
-| `fedrolex` | Contiguous rolling channel windows with coordinate-wise placement during load, update, clipping, and aggregation | Coverage of parameters neglected by static prefixes |
-| `maxnet` | Rotating capacities plus a cosine-decayed largest-subnet aggregation priority | Coverage-weighted supernet training |
+| `fedrolex` | Fixed per-client tier plus contiguous rolling channel windows and coordinate-wise aggregation | Systematic coverage of parameters neglected by static prefixes |
+| `maxnet` | Fixed per-client tiers plus a cosine-decayed largest-tier aggregation priority | Coverage-weighted supernet training |
 | `scaffold` | Full-model server/client control variates and corrected local gradients | Client-drift correction alone |
-| `cc_efl` | FedRolex rolling windows + MaxNet coverage weighting + FedProx regularization | Integrated method proposed for this project |
+| `cc_efl` | Fixed per-client tiers + FedRolex rolling windows + MaxNet-inspired coverage weighting + FedProx | Integrated method under study |
+| `cc_efl_no_prox` | CC-EFL without its proximal penalty | Isolates FedProx's contribution |
+| `cc_efl_uniform` | CC-EFL with uniform rather than largest-tier-prioritized aggregation | Isolates coverage weighting |
+| `cc_efl_random_window` | CC-EFL with random channel offsets at the same fixed client tiers | Matched-budget control for systematic window rotation |
+| `cc_efl_fjord` | CC-EFL plus FjORD-style ordered-width dropout and local self-distillation | Exploratory extension testing whether within-client distillation improves the CC-EFL accuracy/resource trade-off |
+| `cc_efl_warmup_fjord` | CC-EFL plus a 20% prefix-window warmup, followed by systematic rolling and FjORD-style distillation | Exploratory schedule testing whether stable early features help while retaining later parameter coverage |
+| `cc_efl_dynamic` | Historical rotating-capacity schedule, reported separately | Sensitivity to changing tier assignments across rounds |
 
 `static`, `elastic`, and `elastic_scaffold` are compatibility aliases for the
 older experiment names. Pure `fedavg` now has `mu=0`; FedProx is reported
@@ -29,12 +35,16 @@ so CC-EFL does not make an unsupported client-drift claim.
 
 ## Hardware path
 
-The server owns the full supernet. A client receives a `FixedElasticMLP` or
-`FixedCifarCNN` containing only its assigned depth/width tier. This means the
+The server owns the full supernet. Each client's capability tier is assigned
+once per seed and reused across methods and rounds. Heterogeneous-client tiers
+are capped below the full supernet width; the full model remains a reference
+baseline. A client receives a `FixedElasticMLP` or `FixedCifarCNN` containing
+only its assigned depth/width tier. This means the
 reported parameter, FLOP, and payload savings correspond to an actually
 materialized smaller model, not merely a full model with masked computation.
-For FedRolex, the local tensor is still the same size; only its channel window
-is moved over the server model.
+For FedRolex, each client keeps the same tensor size; only its channel window
+moves over the server model. The random-window control preserves each client's
+depth and width schedule and changes only those window positions.
 
 ## Fidelity limits
 
@@ -55,3 +65,4 @@ backbone.
 - [SuperFedNAS, ECCV 2024](https://www.ecva.net/papers/eccv_2024/papers_ECCV/papers/10165.pdf)
 - [SCAFFOLD, ICML 2020](https://arxiv.org/abs/1910.06378)
 - [FedProx, MLSys 2020](https://arxiv.org/abs/1812.06127)
+- [Capacity Confounds and Coverage Guarantees in Adaptive Sub-model Federated Learning, arXiv 2026](https://arxiv.org/abs/2608.07157)

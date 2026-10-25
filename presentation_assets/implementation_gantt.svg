@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
+  <title id="title">Federated Learning Platform Implementation Gantt Chart</title>
+  <desc id="desc">Sixteen-week implementation timeline showing completed, in-progress and planned project tasks.</desc>
+  <rect width="1600" height="900" fill="#FFFFFF"/>
+  <text x="80" y="74" font-family="Arial, sans-serif" font-size="36" font-weight="700" fill="#17233B">Implementation Timeline — Federated Learning Platform</text>
+  <text x="80" y="112" font-family="Arial, sans-serif" font-size="21" fill="#526584">Current status at 50% implementation</text>
+  <line x1="80" y1="140" x2="1520" y2="140" stroke="#D8E1EE" stroke-width="2"/>
+
+  <g font-family="Arial, sans-serif" font-size="19" font-weight="600" fill="#31445F">
+    <text x="490" y="182" text-anchor="middle">W1</text><text x="550" y="182" text-anchor="middle">W2</text><text x="610" y="182" text-anchor="middle">W3</text><text x="670" y="182" text-anchor="middle">W4</text>
+    <text x="730" y="182" text-anchor="middle">W5</text><text x="790" y="182" text-anchor="middle">W6</text><text x="850" y="182" text-anchor="middle">W7</text><text x="910" y="182" text-anchor="middle">W8</text>
+    <text x="970" y="182" text-anchor="middle">W9</text><text x="1030" y="182" text-anchor="middle">W10</text><text x="1090" y="182" text-anchor="middle">W11</text><text x="1150" y="182" text-anchor="middle">W12</text>
+    <text x="1210" y="182" text-anchor="middle">W13</text><text x="1270" y="182" text-anchor="middle">W14</text><text x="1330" y="182" text-anchor="middle">W15</text><text x="1390" y="182" text-anchor="middle">W16</text>
+  </g>
+
+  <g stroke="#D8E1EE" stroke-width="1">
+    <line x1="460" y1="198" x2="460" y2="712"/><line x1="520" y1="198" x2="520" y2="712"/><line x1="580" y1="198" x2="580" y2="712"/><line x1="640" y1="198" x2="640" y2="712"/>
+    <line x1="700" y1="198" x2="700" y2="712"/><line x1="760" y1="198" x2="760" y2="712"/><line x1="820" y1="198" x2="820" y2="712"/><line x1="880" y1="198" x2="880" y2="712"/>
+    <line x1="940" y1="198" x2="940" y2="712"/><line x1="1000" y1="198" x2="1000" y2="712"/><line x1="1060" y1="198" x2="1060" y2="712"/><line x1="1120" y1="198" x2="1120" y2="712"/>
+    <line x1="1180" y1="198" x2="1180" y2="712"/><line x1="1240" y1="198" x2="1240" y2="712"/><line x1="1300" y1="198" x2="1300" y2="712"/><line x1="1360" y1="198" x2="1360" y2="712"/><line x1="1420" y1="198" x2="1420" y2="712"/>
+  </g>
+
+  <g font-family="Arial, sans-serif" font-size="24" fill="#17233B">
+    <text x="80" y="246">Research and requirements</text>
+    <text x="80" y="316">Architecture and dataset setup</text>
+    <text x="80" y="386">Data preparation and feature selection</text>
+    <text x="80" y="456">Browser client and client simulation</text>
+    <text x="80" y="526">FastAPI coordinator and round workflow</text>
+    <text x="80" y="596">Adaptive model / Supernet module</text>
+    <text x="80" y="666">Integration, simulations and evaluation</text>
+  </g>
+
+  <g>
+    <rect x="460" y="216" width="120" height="38" rx="9" fill="#4F7CAC"/>
+    <rect x="520" y="286" width="180" height="38" rx="9" fill="#4F7CAC"/>
+    <rect x="640" y="356" width="240" height="38" rx="9" fill="#4F7CAC"/>
+    <rect x="760" y="426" width="300" height="38" rx="9" fill="#4F7CAC"/>
+    <rect x="880" y="496" width="300" height="38" rx="9" fill="#4F7CAC"/>
+    <rect x="1060" y="566" width="240" height="38" rx="9" fill="#E9A63B"/>
+    <rect x="1240" y="636" width="180" height="38" rx="9" fill="#9CAFC5"/>
+  </g>
+
+  <g font-family="Arial, sans-serif" font-size="18" fill="#17233B">
+    <rect x="80" y="760" width="22" height="22" rx="4" fill="#4F7CAC"/><text x="114" y="779">Completed</text>
+    <rect x="310" y="760" width="22" height="22" rx="4" fill="#E9A63B"/><text x="344" y="779">In progress</text>
+    <rect x="570" y="760" width="22" height="22" rx="4" fill="#9CAFC5"/><text x="604" y="779">Planned</text>
+  </g>
+  <text x="80" y="836" font-family="Arial, sans-serif" font-size="19" fill="#526584">Use this as the project schedule; adjust week numbers if your semester calendar differs.</text>
+</svg>

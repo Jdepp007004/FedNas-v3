@@ -4,12 +4,16 @@ from __future__ import annotations
 
 import argparse
 import json
+from dataclasses import asdict
 from pathlib import Path
 from collections import defaultdict
+
+import torch
 
 from .config import DATASETS, get_dataset_spec
 from .data import load_dataset
 from .federated import run_federated_experiment
+from .provenance import build_array_run_manifest
 from .stats import confidence_interval, paired_interval
 
 
@@ -30,9 +34,27 @@ def _summary(results: list[dict]) -> list[dict]:
         val_stats = confidence_interval(
             (item["selected_val_accuracy"] for item in finals), bounds=(0.0, 1.0)
         )
+        full_model_candidates = [
+            max(item["tier_scores"], key=lambda candidate: candidate["parameters"])
+            for item in finals
+        ]
+        full_accuracy_stats = confidence_interval(
+            (item["test_accuracy"] for item in full_model_candidates), bounds=(0.0, 1.0)
+        )
+        full_f1_stats = confidence_interval(
+            (item["test_macro_f1"] for item in full_model_candidates), bounds=(0.0, 1.0)
+        )
 
         def mean(key: str) -> float:
             return sum(float(item[key]) for item in finals) / len(finals)
+
+        def history_mean(key: str) -> float:
+            values = [
+                float(round_item[key])
+                for result in seeded_results
+                for round_item in result["history"]
+            ]
+            return sum(values) / len(values) if values else 0.0
 
         rows.append(
             {
@@ -43,6 +65,19 @@ def _summary(results: list[dict]) -> list[dict]:
                 "test_accuracy_std": accuracy_stats["std"],
                 "test_accuracy_ci95_low": accuracy_stats["ci95_low"],
                 "test_accuracy_ci95_high": accuracy_stats["ci95_high"],
+                "capacity_selected_test_accuracy_mean": accuracy_stats["mean"],
+                "full_model_test_accuracy_mean": full_accuracy_stats["mean"],
+                "full_model_test_accuracy_ci95_low": full_accuracy_stats["ci95_low"],
+                "full_model_test_accuracy_ci95_high": full_accuracy_stats["ci95_high"],
+                "full_model_test_macro_f1_mean": full_f1_stats["mean"],
+                "full_model_test_macro_f1_ci95_low": full_f1_stats["ci95_low"],
+                "full_model_test_macro_f1_ci95_high": full_f1_stats["ci95_high"],
+                "full_model_parameters_mean": sum(
+                    float(item["parameters"]) for item in full_model_candidates
+                ) / len(full_model_candidates),
+                "full_model_flops_per_example_mean": sum(
+                    float(item["flops"]) for item in full_model_candidates
+                ) / len(full_model_candidates),
                 "macro_f1_mean": f1_stats["mean"],
                 "macro_f1_std": f1_stats["std"],
                 "macro_f1_ci95_low": f1_stats["ci95_low"],
@@ -50,11 +85,29 @@ def _summary(results: list[dict]) -> list[dict]:
                 "val_accuracy_mean": val_stats["mean"],
                 "val_accuracy_ci95_low": val_stats["ci95_low"],
                 "val_accuracy_ci95_high": val_stats["ci95_high"],
-                "upload_bytes_per_round_mean": mean("total_upload_bytes"),
-                "download_bytes_per_round_mean": mean("total_download_bytes"),
-                "active_flops_per_client_mean": mean("mean_active_flops"),
-                "client_parameters_mean": mean("mean_client_parameters"),
-                "participation_rate_mean": mean("participation_rate"),
+                "upload_bytes_per_round_mean": history_mean("total_upload_bytes"),
+                "download_bytes_per_round_mean": history_mean("total_download_bytes"),
+                "upload_bytes_per_run_mean": sum(
+                    sum(int(round_item["total_upload_bytes"]) for round_item in result["history"])
+                    for result in seeded_results
+                ) / len(seeded_results),
+                "download_bytes_per_run_mean": sum(
+                    sum(int(round_item["total_download_bytes"]) for round_item in result["history"])
+                    for result in seeded_results
+                ) / len(seeded_results),
+                "active_forward_flops_per_example_per_client_mean": history_mean("mean_active_flops"),
+                "client_parameters_mean": history_mean("mean_client_parameters"),
+                "selected_deployed_parameters_mean": mean("selected_deployed_parameters"),
+                "selected_deployed_flops_per_example_mean": mean("selected_deployed_flops"),
+                "participation_rate_mean": history_mean("participation_rate"),
+                "parameter_coordinate_coverage_mean": sum(
+                    float(result["parameter_coordinate_coverage"])
+                    for result in seeded_results
+                ) / len(seeded_results),
+                "parameter_coordinate_updates_cv_mean": sum(
+                    float(result["parameter_coordinate_updates_cv"] or 0.0)
+                    for result in seeded_results
+                ) / len(seeded_results),
                 "wall_clock_seconds_mean": sum(
                     float(result.get("wall_clock_seconds", 0.0))
                     for result in seeded_results
@@ -83,12 +136,28 @@ def _summary(results: list[dict]) -> list[dict]:
             / max(baseline["upload_bytes_per_round_mean"], 1.0)
         )
         row["flops_reduction_vs_fedavg"] = float(
-            1.0 - row["active_flops_per_client_mean"]
-            / max(baseline["active_flops_per_client_mean"], 1.0)
+            1.0 - row["active_forward_flops_per_example_per_client_mean"]
+            / max(baseline["active_forward_flops_per_example_per_client_mean"], 1.0)
         )
         row["parameter_reduction_vs_fedavg"] = float(
             1.0 - row["client_parameters_mean"]
             / max(baseline["client_parameters_mean"], 1.0)
+        )
+        row["deployed_parameter_reduction_vs_fedavg"] = float(
+            1.0 - row["selected_deployed_parameters_mean"]
+            / max(baseline["selected_deployed_parameters_mean"], 1.0)
+        )
+        row["deployed_flops_reduction_vs_fedavg"] = float(
+            1.0 - row["selected_deployed_flops_per_example_mean"]
+            / max(baseline["selected_deployed_flops_per_example_mean"], 1.0)
+        )
+        row["deployed_parameter_saving_vs_full_fedavg"] = float(
+            1.0 - row["selected_deployed_parameters_mean"]
+            / max(baseline["full_model_parameters_mean"], 1.0)
+        )
+        row["deployed_flops_saving_vs_full_fedavg"] = float(
+            1.0 - row["selected_deployed_flops_per_example_mean"]
+            / max(baseline["full_model_flops_per_example_mean"], 1.0)
         )
         if row["strategy"] != "fedavg":
             baseline_results = {
@@ -105,9 +174,19 @@ def _summary(results: list[dict]) -> list[dict]:
                     [baseline_results[seed]["selected_test_accuracy"] for seed in shared_seeds],
                     [method_results[seed]["selected_test_accuracy"] for seed in shared_seeds],
                 )
+                f1_delta = paired_interval(
+                    [baseline_results[seed]["selected_test_macro_f1"] for seed in shared_seeds],
+                    [method_results[seed]["selected_test_macro_f1"] for seed in shared_seeds],
+                )
                 row["paired_accuracy_delta_vs_fedavg_mean"] = delta["mean"]
                 row["paired_accuracy_delta_vs_fedavg_ci95_low"] = delta["ci95_low"]
                 row["paired_accuracy_delta_vs_fedavg_ci95_high"] = delta["ci95_high"]
+                row["paired_capacity_selected_accuracy_delta_vs_fedavg_mean"] = delta["mean"]
+                row["paired_capacity_selected_accuracy_delta_vs_fedavg_ci95_low"] = delta["ci95_low"]
+                row["paired_capacity_selected_accuracy_delta_vs_fedavg_ci95_high"] = delta["ci95_high"]
+                row["paired_capacity_selected_macro_f1_delta_vs_fedavg_mean"] = f1_delta["mean"]
+                row["paired_capacity_selected_macro_f1_delta_vs_fedavg_ci95_low"] = f1_delta["ci95_low"]
+                row["paired_capacity_selected_macro_f1_delta_vs_fedavg_ci95_high"] = f1_delta["ci95_high"]
     return rows
 
 
@@ -126,10 +205,24 @@ def main() -> None:
         choices=(
             "fedavg", "fedprox", "static", "heterofl", "fjord", "fedrolex",
             "elastic", "maxnet", "scaffold", "elastic_scaffold", "cc_efl",
+            "cc_efl_no_prox", "cc_efl_uniform", "cc_efl_random_window",
+            "cc_efl_dynamic", "cc_efl_fjord", "cc_efl_warmup_fjord",
         ),
         default=("fedavg", "heterofl", "fjord", "fedrolex", "cc_efl"),
     )
     parser.add_argument("--seeds", nargs="+", type=int, default=(42,))
+    parser.add_argument(
+        "--torch-threads",
+        type=int,
+        default=None,
+        help="Optional PyTorch CPU intra-op thread cap, recorded in the run manifest.",
+    )
+    parser.add_argument(
+        "--optimizer",
+        choices=("adam", "sgd"),
+        default="adam",
+        help="Use SGD for optimizer-matched SCAFFOLD comparisons.",
+    )
     parser.add_argument("--dropout-rate", type=float, default=0.0)
     parser.add_argument("--straggler-rate", type=float, default=0.0)
     parser.add_argument("--secure-aggregation", action="store_true")
@@ -157,6 +250,14 @@ def main() -> None:
     parser.add_argument("--output", default=None, help="Optional JSON output path")
     args = parser.parse_args()
 
+    scaffold_strategies = {"scaffold", "elastic_scaffold"}
+    if scaffold_strategies.intersection(args.strategies) and args.optimizer != "sgd":
+        parser.error("SCAFFOLD strategies require --optimizer sgd; run their comparison separately.")
+    if args.torch_threads is not None:
+        if args.torch_threads < 1:
+            parser.error("--torch-threads must be a positive integer")
+        torch.set_num_threads(args.torch_threads)
+
     spec = get_dataset_spec(args.dataset)
     bundle = load_dataset(
         args.dataset,
@@ -177,6 +278,7 @@ def main() -> None:
                         seed=seed,
                         num_clients=args.clients,
                         strategy=strategy,
+                        optimizer_name=args.optimizer,
                         dropout_rate=args.dropout_rate,
                         straggler_rate=args.straggler_rate,
                         secure_aggregation=args.secure_aggregation,
@@ -200,6 +302,8 @@ def main() -> None:
         "test_samples": len(bundle.X_test),
         "seeds": list(args.seeds),
         "rounds": args.rounds,
+        "optimizer": args.optimizer,
+        "torch_intraop_threads": torch.get_num_threads(),
         "dropout_rate": args.dropout_rate,
         "straggler_rate": args.straggler_rate,
         "secure_aggregation": args.secure_aggregation,
@@ -212,6 +316,32 @@ def main() -> None:
         "attack_scale": args.attack_scale,
         "defense": args.defense,
         "trim_ratio": args.trim_ratio,
+        "run_manifest": build_array_run_manifest(
+            dataset=args.dataset,
+            splits={
+                "train": (bundle.X_train, bundle.y_train),
+                "validation": (bundle.X_val, bundle.y_val),
+                "test": (bundle.X_test, bundle.y_test),
+            },
+            source_path=(
+                Path(args.data_dir) / f"{args.dataset}.zip"
+                if args.dataset != "digits"
+                else None
+            ),
+            arguments={
+                "dataset_spec": asdict(spec),
+                "variants": list(args.variants),
+                "strategies": list(args.strategies),
+                "seeds": list(args.seeds),
+                "rounds": args.rounds,
+                "optimizer": args.optimizer,
+                "torch_intraop_threads": torch.get_num_threads(),
+                "clients": args.clients or spec.clients,
+                "max_samples_override": args.max_samples,
+                "dropout_rate": args.dropout_rate,
+                "straggler_rate": args.straggler_rate,
+            },
+        ),
         "summary": _summary(results),
         "results": results,
     }

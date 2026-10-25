@@ -1,0 +1,2154 @@
+{
+  "benchmark": "exact self-serve website budget-elastic tabular method",
+  "dataset": "project clinical CSV partitions; vital_status alive/dead",
+  "client_training_rows": 2452,
+  "host_setup_rows": 818,
+  "host_reference_rows": 654,
+  "host_validation_rows": 164,
+  "test_rows": 818,
+  "features": 66,
+  "classes": [
+    "alive",
+    "dead"
+  ],
+  "non_iid_partition": "Dirichlet alpha=0.5, four clients, seed-specific; min 30 rows per client",
+  "host": {
+    "platform": "Windows-11-10.0.26200-SP0",
+    "processor": "Intel64 Family 6 Model 170 Stepping 4, GenuineIntel",
+    "logical_cpus_available": 18,
+    "ram_gib": 15.61,
+    "cuda_disabled": true
+  },
+  "device_profiles": [
+    {
+      "name": "edge-1t",
+      "logical_cpu_ids": [
+        0
+      ],
+      "cpu_threads": 1,
+      "dedicated_ram_gb": 0.5,
+      "available_ram_gb": 0.5,
+      "available_cpu_cores": 1,
+      "dedicated_cpu_cores": 1,
+      "gpu_available": false,
+      "resource_source": "benchmark profile; RAM not OS-limited"
+    },
+    {
+      "name": "low-2t",
+      "logical_cpu_ids": [
+        1,
+        2
+      ],
+      "cpu_threads": 2,
+      "dedicated_ram_gb": 1.0,
+      "available_ram_gb": 1.0,
+      "available_cpu_cores": 2,
+      "dedicated_cpu_cores": 2,
+      "gpu_available": false,
+      "resource_source": "benchmark profile; RAM not OS-limited"
+    },
+    {
+      "name": "mid-4t",
+      "logical_cpu_ids": [
+        3,
+        4,
+        5,
+        6
+      ],
+      "cpu_threads": 4,
+      "dedicated_ram_gb": 2.0,
+      "available_ram_gb": 2.0,
+      "available_cpu_cores": 4,
+      "dedicated_cpu_cores": 4,
+      "gpu_available": false,
+      "resource_source": "benchmark profile; RAM not OS-limited"
+    },
+    {
+      "name": "high-8t",
+      "logical_cpu_ids": [
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14
+      ],
+      "cpu_threads": 8,
+      "dedicated_ram_gb": 4.0,
+      "available_ram_gb": 4.0,
+      "available_cpu_cores": 8,
+      "dedicated_cpu_cores": 8,
+      "gpu_available": false,
+      "resource_source": "benchmark profile; RAM not OS-limited"
+    }
+  ],
+  "model_config": {
+    "input_dim": 512,
+    "max_depth": 3,
+    "max_width": 64,
+    "output_dim": 2
+  },
+  "settings": {
+    "seeds": [
+      1,
+      2,
+      3,
+      4,
+      5
+    ],
+    "rounds": 8,
+    "epochs": 3,
+    "max_depth": 3,
+    "max_width": 64
+  },
+  "limitations": [
+    "Four virtual clients are separate CPU-affinity-limited processes on one host, not four physical devices.",
+    "RAM values are resource-planner inputs; per-process memory limits were not imposed.",
+    "Round wall time excludes website, encryption, HTTP, and network overhead.",
+    "The bundled small breast-cancer dataset is a functional clinical tabular workload, not evidence for LLM-scale training."
+  ],
+  "runs": [
+    {
+      "seed": 1,
+      "method": "fedavg_full",
+      "rounds": 8,
+      "local_epochs": 3,
+      "wall_seconds_rounds": 3.993350900709629,
+      "median_round_seconds": 0.12246975000016391,
+      "mean_local_seconds_per_round_by_client": [
+        0.3860634125303477,
+        0.47525710001355037,
+        0.36623032501665875,
+        0.48862752510467544
+      ],
+      "assigned_depth_width": [
+        {
+          "depth": 3,
+          "width": 64
+        },
+        {
+          "depth": 3,
+          "width": 64
+        },
+        {
+          "depth": 3,
+          "width": 64
+        },
+        {
+          "depth": 3,
+          "width": 64
+        }
+      ],
+      "active_parameters_per_client": [
+        41282,
+        41282,
+        41282,
+        41282
+      ],
+      "fp32_download_bytes_per_client": [
+        165128,
+        165128,
+        165128,
+        165128
+      ],
+      "coordinate_coverage": 1.0,
+      "capacity_selected_test_accuracy": 0.8202933985330073,
+      "capacity_selected_test_macro_f1": 0.8032118852519381,
+      "per_client_test_metrics": [
+        {
+          "accuracy": 0.8202933985330073,
+          "macro_f1": 0.8032118852519381
+        },
+        {
+          "accuracy": 0.8202933985330073,
+          "macro_f1": 0.8032118852519381
+        },
+        {
+          "accuracy": 0.8202933985330073,
+          "macro_f1": 0.8032118852519381
+        },
+        {
+          "accuracy": 0.8202933985330073,
+          "macro_f1": 0.8032118852519381
+        }
+      ],
+      "device_results": [
+        {
+          "profile": "low-2t",
+          "logical_cpu_ids": [
+            1,
+            2
+          ],
+          "cpu_threads": 2,
+          "dedicated_ram_gb_planner_input": 1.0,
+          "local_rows": 634,
+          "assigned_depth": 3,
+          "assigned_width": 64,
+          "active_parameters": 41282,
+          "fp32_download_bytes": 165128,
+          "mean_local_seconds_per_round": 0.3860634125303477,
+          "test_metrics": {
+            "accuracy": 0.8202933985330073,
+            "macro_f1": 0.8032118852519381
+          }
+        },
+        {
+          "profile": "high-8t",
+          "logical_cpu_ids": [
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14
+          ],
+          "cpu_threads": 8,
+          "dedicated_ram_gb_planner_input": 4.0,
+          "local_rows": 453,
+          "assigned_depth": 3,
+          "assigned_width": 64,
+          "active_parameters": 41282,
+          "fp32_download_bytes": 165128,
+          "mean_local_seconds_per_round": 0.47525710001355037,
+          "test_metrics": {
+            "accuracy": 0.8202933985330073,
+            "macro_f1": 0.8032118852519381
+          }
+        },
+        {
+          "profile": "edge-1t",
+          "logical_cpu_ids": [
+            0
+          ],
+          "cpu_threads": 1,
+          "dedicated_ram_gb_planner_input": 0.5,
+          "local_rows": 641,
+          "assigned_depth": 3,
+          "assigned_width": 64,
+          "active_parameters": 41282,
+          "fp32_download_bytes": 165128,
+          "mean_local_seconds_per_round": 0.36623032501665875,
+          "test_metrics": {
+            "accuracy": 0.8202933985330073,
+            "macro_f1": 0.8032118852519381
+          }
+        },
+        {
+          "profile": "mid-4t",
+          "logical_cpu_ids": [
+            3,
+            4,
+            5,
+            6
+          ],
+          "cpu_threads": 4,
+          "dedicated_ram_gb_planner_input": 2.0,
+          "local_rows": 724,
+          "assigned_depth": 3,
+          "assigned_width": 64,
+          "active_parameters": 41282,
+          "fp32_download_bytes": 165128,
+          "mean_local_seconds_per_round": 0.48862752510467544,
+          "test_metrics": {
+            "accuracy": 0.8202933985330073,
+            "macro_f1": 0.8032118852519381
+          }
+        }
+      ],
+      "full_global_test_metrics": {
+        "accuracy": 0.8202933985330073,
+        "macro_f1": 0.8032118852519381
+      },
+      "mean_client_host_validation_metrics": {
+        "accuracy": 0.8109756097560976,
+        "macro_f1": 0.7870219094298521
+      },
+      "full_global_host_validation_metrics": {
+        "accuracy": 0.8109756097560976,
+        "macro_f1": 0.7870219094298521
+      },
+      "worker_ready": [
+        {
+          "ready": true,
+          "affinity": [
+            1,
+            2
+          ],
+          "local_rows": 634
+        },
+        {
+          "ready": true,
+          "affinity": [
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14
+          ],
+          "local_rows": 453
+        },
+        {
+          "ready": true,
+          "affinity": [
+            0
+          ],
+          "local_rows": 641
+        },
+        {
+          "ready": true,
+          "affinity": [
+            3,
+            4,
+            5,
+            6
+          ],
+          "local_rows": 724
+        }
+      ],
+      "elapsed_including_worker_startup_seconds": 31.712660900317132
+    },
+    {
+      "seed": 1,
+      "method": "website_budget_elastic",
+      "rounds": 8,
+      "local_epochs": 3,
+      "wall_seconds_rounds": 4.458223100285977,
+      "median_round_seconds": 0.09870130009949207,
+      "mean_local_seconds_per_round_by_client": [
+        0.38755971245700493,
+        0.48976861248956993,
+        0.35278551251394674,
+        0.5469463875633664
+      ],
+      "assigned_depth_width": [
+        {
+          "depth": 2,
+          "width": 16
+        },
+        {
+          "depth": 3,
+          "width": 64
+        },
+        {
+          "depth": 2,
+          "width": 16
+        },
+        {
+          "depth": 2,
+          "width": 32
+        }
+      ],
+      "active_parameters_per_client": [
+        8514,
+        41282,
+        8514,
+        17538
+      ],
+      "fp32_download_bytes_per_client": [
+        34056,
+        165128,
+        34056,
+        70152
+      ],
+      "coordinate_coverage": 1.0,
+      "capacity_selected_test_accuracy": 0.6705378973105135,
+      "capacity_selected_test_macro_f1": 0.5857925822934892,
+      "per_client_test_metrics": [
+        {
+          "accuracy": 0.7860635696821516,
+          "macro_f1": 0.7578993476896849
+        },
+        {
+          "accuracy": 0.4743276283618582,
+          "macro_f1": 0.43873187295751637
+        },
+        {
+          "accuracy": 0.7860635696821516,
+          "macro_f1": 0.7578993476896849
+        },
+        {
+          "accuracy": 0.6356968215158925,
+          "macro_f1": 0.38863976083707025
+        }
+      ],
+      "device_results": [
+        {
+          "profile": "low-2t",
+          "logical_cpu_ids": [
+            1,
+            2
+          ],
+          "cpu_threads": 2,
+          "dedicated_ram_gb_planner_input": 1.0,
+          "local_rows": 634,
+          "assigned_depth": 2,
+          "assigned_width": 16,
+          "active_parameters": 8514,
+          "fp32_download_bytes": 34056,
+          "mean_local_seconds_per_round": 0.38755971245700493,
+          "test_metrics": {
+            "accuracy": 0.7860635696821516,
+            "macro_f1": 0.7578993476896849
+          }
+        },
+        {
+          "profile": "high-8t",
+          "logical_cpu_ids": [
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14
+          ],
+          "cpu_threads": 8,
+          "dedicated_ram_gb_planner_input": 4.0,
+          "local_rows": 453,
+          "assigned_depth": 3,
+          "assigned_width": 64,
+          "active_parameters": 41282,
+          "fp32_download_bytes": 165128,
+          "mean_local_seconds_per_round": 0.48976861248956993,
+          "test_metrics": {
+            "accuracy": 0.4743276283618582,
+            "macro_f1": 0.43873187295751637
+          }
+        },
+        {
+          "profile": "edge-1t",
+          "logical_cpu_ids": [
+            0
+          ],
+          "cpu_threads": 1,
+          "dedicated_ram_gb_planner_input": 0.5,
+          "local_rows": 641,
+          "assigned_depth": 2,
+          "assigned_width": 16,
+          "active_parameters": 8514,
+          "fp32_download_bytes": 34056,
+          "mean_local_seconds_per_round": 0.35278551251394674,
+          "test_metrics": {
+            "accuracy": 0.7860635696821516,
+            "macro_f1": 0.7578993476896849
+          }
+        },
+        {
+          "profile": "mid-4t",
+          "logical_cpu_ids": [
+            3,
+            4,
+            5,
+            6
+          ],
+          "cpu_threads": 4,
+          "dedicated_ram_gb_planner_input": 2.0,
+          "local_rows": 724,
+          "assigned_depth": 2,
+          "assigned_width": 32,
+          "active_parameters": 17538,
+          "fp32_download_bytes": 70152,
+          "mean_local_seconds_per_round": 0.5469463875633664,
+          "test_metrics": {
+            "accuracy": 0.6356968215158925,
+            "macro_f1": 0.38863976083707025
+          }
+        }
+      ],
+      "full_global_test_metrics": {
+        "accuracy": 0.4743276283618582,
+        "macro_f1": 0.43873187295751637
+      },
+      "mean_client_host_validation_metrics": {
+        "accuracy": 0.6707317073170732,
+        "macro_f1": 0.5807342245435128
+      },
+      "full_global_host_validation_metrics": {
+        "accuracy": 0.4878048780487805,
+        "macro_f1": 0.45874587458745875
+      },
+      "worker_ready": [
+        {
+          "ready": true,
+          "affinity": [
+            1,
+            2
+          ],
+          "local_rows": 634
+        },
+        {
+          "ready": true,
+          "affinity": [
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14
+          ],
+          "local_rows": 453
+        },
+        {
+          "ready": true,
+          "affinity": [
+            0
+          ],
+          "local_rows": 641
+        },
+        {
+          "ready": true,
+          "affinity": [
+            3,
+            4,
+            5,
+            6
+          ],
+          "local_rows": 724
+        }
+      ],
+      "elapsed_including_worker_startup_seconds": 21.71372580016032
+    },
+    {
+      "seed": 2,
+      "method": "fedavg_full",
+      "rounds": 8,
+      "local_epochs": 3,
+      "wall_seconds_rounds": 3.7843110002577305,
+      "median_round_seconds": 0.10962899983860552,
+      "mean_local_seconds_per_round_by_client": [
+        0.38499463768675923,
+        0.4644264873932116,
+        0.3695173625019379,
+        0.41372816235525534
+      ],
+      "assigned_depth_width": [
+        {
+          "depth": 3,
+          "width": 64
+        },
+        {
+          "depth": 3,
+          "width": 64
+        },
+        {
+          "depth": 3,
+          "width": 64
+        },
+        {
+          "depth": 3,
+          "width": 64
+        }
+      ],
+      "active_parameters_per_client": [
+        41282,
+        41282,
+        41282,
+        41282
+      ],
+      "fp32_download_bytes_per_client": [
+        165128,
+        165128,
+        165128,
+        165128
+      ],
+      "coordinate_coverage": 1.0,
+      "capacity_selected_test_accuracy": 0.8080684596577017,
+      "capacity_selected_test_macro_f1": 0.7784700624263656,
+      "per_client_test_metrics": [
+        {
+          "accuracy": 0.8080684596577017,
+          "macro_f1": 0.7784700624263656
+        },
+        {
+          "accuracy": 0.8080684596577017,
+          "macro_f1": 0.7784700624263656
+        },
+        {
+          "accuracy": 0.8080684596577017,
+          "macro_f1": 0.7784700624263656
+        },
+        {
+          "accuracy": 0.8080684596577017,
+          "macro_f1": 0.7784700624263656
+        }
+      ],
+      "device_results": [
+        {
+          "profile": "low-2t",
+          "logical_cpu_ids": [
+            1,
+            2
+          ],
+          "cpu_threads": 2,
+          "dedicated_ram_gb_planner_input": 1.0,
+          "local_rows": 671,
+          "assigned_depth": 3,
+          "assigned_width": 64,
+          "active_parameters": 41282,
+          "fp32_download_bytes": 165128,
+          "mean_local_seconds_per_round": 0.38499463768675923,
+          "test_metrics": {
+            "accuracy": 0.8080684596577017,
+            "macro_f1": 0.7784700624263656
+          }
+        },
+        {
+          "profile": "high-8t",
+          "logical_cpu_ids": [
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14
+          ],
+          "cpu_threads": 8,
+          "dedicated_ram_gb_planner_input": 4.0,
+          "local_rows": 830,
+          "assigned_depth": 3,
+          "assigned_width": 64,
+          "active_parameters": 41282,
+          "fp32_download_bytes": 165128,
+          "mean_local_seconds_per_round": 0.4644264873932116,
+          "test_metrics": {
+            "accuracy": 0.8080684596577017,
+            "macro_f1": 0.7784700624263656
+          }
+        },
+        {
+          "profile": "edge-1t",
+          "logical_cpu_ids": [
+            0
+          ],
+          "cpu_threads": 1,
+          "dedicated_ram_gb_planner_input": 0.5,
+          "local_rows": 763,
+          "assigned_depth": 3,
+          "assigned_width": 64,
+          "active_parameters": 41282,
+          "fp32_download_bytes": 165128,
+          "mean_local_seconds_per_round": 0.3695173625019379,
+          "test_metrics": {
+            "accuracy": 0.8080684596577017,
+            "macro_f1": 0.7784700624263656
+          }
+        },
+        {
+          "profile": "mid-4t",
+          "logical_cpu_ids": [
+            3,
+            4,
+            5,
+            6
+          ],
+          "cpu_threads": 4,
+          "dedicated_ram_gb_planner_input": 2.0,
+          "local_rows": 188,
+          "assigned_depth": 3,
+          "assigned_width": 64,
+          "active_parameters": 41282,
+          "fp32_download_bytes": 165128,
+          "mean_local_seconds_per_round": 0.41372816235525534,
+          "test_metrics": {
+            "accuracy": 0.8080684596577017,
+            "macro_f1": 0.7784700624263656
+          }
+        }
+      ],
+      "full_global_test_metrics": {
+        "accuracy": 0.8080684596577017,
+        "macro_f1": 0.7784700624263656
+      },
+      "mean_client_host_validation_metrics": {
+        "accuracy": 0.7926829268292683,
+        "macro_f1": 0.7496408045977012
+      },
+      "full_global_host_validation_metrics": {
+        "accuracy": 0.7926829268292683,
+        "macro_f1": 0.7496408045977012
+      },
+      "worker_ready": [
+        {
+          "ready": true,
+          "affinity": [
+            1,
+            2
+          ],
+          "local_rows": 671
+        },
+        {
+          "ready": true,
+          "affinity": [
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14
+          ],
+          "local_rows": 830
+        },
+        {
+          "ready": true,
+          "affinity": [
+            0
+          ],
+          "local_rows": 763
+        },
+        {
+          "ready": true,
+          "affinity": [
+            3,
+            4,
+            5,
+            6
+          ],
+          "local_rows": 188
+        }
+      ],
+      "elapsed_including_worker_startup_seconds": 21.766543600242585
+    },
+    {
+      "seed": 2,
+      "method": "website_budget_elastic",
+      "rounds": 8,
+      "local_epochs": 3,
+      "wall_seconds_rounds": 4.1006689998321235,
+      "median_round_seconds": 0.09666619985364377,
+      "mean_local_seconds_per_round_by_client": [
+        0.3906417250400409,
+        0.48316725000040606,
+        0.3673267498379573,
+        0.4514325125492178
+      ],
+      "assigned_depth_width": [
+        {
+          "depth": 2,
+          "width": 16
+        },
+        {
+          "depth": 3,
+          "width": 64
+        },
+        {
+          "depth": 2,
+          "width": 16
+        },
+        {
+          "depth": 2,
+          "width": 32
+        }
+      ],
+      "active_parameters_per_client": [
+        8514,
+        41282,
+        8514,
+        17538
+      ],
+      "fp32_download_bytes_per_client": [
+        34056,
+        165128,
+        34056,
+        70152
+      ],
+      "coordinate_coverage": 1.0,
+      "capacity_selected_test_accuracy": 0.6928484107579462,
+      "capacity_selected_test_macro_f1": 0.6221509335564601,
+      "per_client_test_metrics": [
+        {
+          "accuracy": 0.6809290953545232,
+          "macro_f1": 0.6806766428106701
+        },
+        {
+          "accuracy": 0.676039119804401,
+          "macro_f1": 0.49816531814656617
+        },
+        {
+          "accuracy": 0.6809290953545232,
+          "macro_f1": 0.6806766428106701
+        },
+        {
+          "accuracy": 0.7334963325183375,
+          "macro_f1": 0.629085130457934
+        }
+      ],
+      "device_results": [
+        {
+          "profile": "low-2t",
+          "logical_cpu_ids": [
+            1,
+            2
+          ],
+          "cpu_threads": 2,
+          "dedicated_ram_gb_planner_input": 1.0,
+          "local_rows": 671,
+          "assigned_depth": 2,
+          "assigned_width": 16,
+          "active_parameters": 8514,
+          "fp32_download_bytes": 34056,
+          "mean_local_seconds_per_round": 0.3906417250400409,
+          "test_metrics": {
+            "accuracy": 0.6809290953545232,
+            "macro_f1": 0.6806766428106701
+          }
+        },
+        {
+          "profile": "high-8t",
+          "logical_cpu_ids": [
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14
+          ],
+          "cpu_threads": 8,
+          "dedicated_ram_gb_planner_input": 4.0,
+          "local_rows": 830,
+          "assigned_depth": 3,
+          "assigned_width": 64,
+          "active_parameters": 41282,
+          "fp32_download_bytes": 165128,
+          "mean_local_seconds_per_round": 0.48316725000040606,
+          "test_metrics": {
+            "accuracy": 0.676039119804401,
+            "macro_f1": 0.49816531814656617
+          }
+        },
+        {
+          "profile": "edge-1t",
+          "logical_cpu_ids": [
+            0
+          ],
+          "cpu_threads": 1,
+          "dedicated_ram_gb_planner_input": 0.5,
+          "local_rows": 763,
+          "assigned_depth": 2,
+          "assigned_width": 16,
+          "active_parameters": 8514,
+          "fp32_download_bytes": 34056,
+          "mean_local_seconds_per_round": 0.3673267498379573,
+          "test_metrics": {
+            "accuracy": 0.6809290953545232,
+            "macro_f1": 0.6806766428106701
+          }
+        },
+        {
+          "profile": "mid-4t",
+          "logical_cpu_ids": [
+            3,
+            4,
+            5,
+            6
+          ],
+          "cpu_threads": 4,
+          "dedicated_ram_gb_planner_input": 2.0,
+          "local_rows": 188,
+          "assigned_depth": 2,
+          "assigned_width": 32,
+          "active_parameters": 17538,
+          "fp32_download_bytes": 70152,
+          "mean_local_seconds_per_round": 0.4514325125492178,
+          "test_metrics": {
+            "accuracy": 0.7334963325183375,
+            "macro_f1": 0.629085130457934
+          }
+        }
+      ],
+      "full_global_test_metrics": {
+        "accuracy": 0.676039119804401,
+        "macro_f1": 0.49816531814656617
+      },
+      "mean_client_host_validation_metrics": {
+        "accuracy": 0.6875,
+        "macro_f1": 0.6171517294933699
+      },
+      "full_global_host_validation_metrics": {
+        "accuracy": 0.6829268292682927,
+        "macro_f1": 0.5176470588235295
+      },
+      "worker_ready": [
+        {
+          "ready": true,
+          "affinity": [
+            1,
+            2
+          ],
+          "local_rows": 671
+        },
+        {
+          "ready": true,
+          "affinity": [
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14
+          ],
+          "local_rows": 830
+        },
+        {
+          "ready": true,
+          "affinity": [
+            0
+          ],
+          "local_rows": 763
+        },
+        {
+          "ready": true,
+          "affinity": [
+            3,
+            4,
+            5,
+            6
+          ],
+          "local_rows": 188
+        }
+      ],
+      "elapsed_including_worker_startup_seconds": 20.812056799884886
+    },
+    {
+      "seed": 3,
+      "method": "fedavg_full",
+      "rounds": 8,
+      "local_epochs": 3,
+      "wall_seconds_rounds": 3.7680665999650955,
+      "median_round_seconds": 0.08421310014091432,
+      "mean_local_seconds_per_round_by_client": [
+        0.3893834000919014,
+        0.45464070001617074,
+        0.3809035625308752,
+        0.3906053875107318
+      ],
+      "assigned_depth_width": [
+        {
+          "depth": 3,
+          "width": 64
+        },
+        {
+          "depth": 3,
+          "width": 64
+        },
+        {
+          "depth": 3,
+          "width": 64
+        },
+        {
+          "depth": 3,
+          "width": 64
+        }
+      ],
+      "active_parameters_per_client": [
+        41282,
+        41282,
+        41282,
+        41282
+      ],
+      "fp32_download_bytes_per_client": [
+        165128,
+        165128,
+        165128,
+        165128
+      ],
+      "coordinate_coverage": 1.0,
+      "capacity_selected_test_accuracy": 0.8337408312958435,
+      "capacity_selected_test_macro_f1": 0.8159997882925796,
+      "per_client_test_metrics": [
+        {
+          "accuracy": 0.8337408312958435,
+          "macro_f1": 0.8159997882925796
+        },
+        {
+          "accuracy": 0.8337408312958435,
+          "macro_f1": 0.8159997882925796
+        },
+        {
+          "accuracy": 0.8337408312958435,
+          "macro_f1": 0.8159997882925796
+        },
+        {
+          "accuracy": 0.8337408312958435,
+          "macro_f1": 0.8159997882925796
+        }
+      ],
+      "device_results": [
+        {
+          "profile": "high-8t",
+          "logical_cpu_ids": [
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14
+          ],
+          "cpu_threads": 8,
+          "dedicated_ram_gb_planner_input": 4.0,
+          "local_rows": 55,
+          "assigned_depth": 3,
+          "assigned_width": 64,
+          "active_parameters": 41282,
+          "fp32_download_bytes": 165128,
+          "mean_local_seconds_per_round": 0.3893834000919014,
+          "test_metrics": {
+            "accuracy": 0.8337408312958435,
+            "macro_f1": 0.8159997882925796
+          }
+        },
+        {
+          "profile": "mid-4t",
+          "logical_cpu_ids": [
+            3,
+            4,
+            5,
+            6
+          ],
+          "cpu_threads": 4,
+          "dedicated_ram_gb_planner_input": 2.0,
+          "local_rows": 582,
+          "assigned_depth": 3,
+          "assigned_width": 64,
+          "active_parameters": 41282,
+          "fp32_download_bytes": 165128,
+          "mean_local_seconds_per_round": 0.45464070001617074,
+          "test_metrics": {
+            "accuracy": 0.8337408312958435,
+            "macro_f1": 0.8159997882925796
+          }
+        },
+        {
+          "profile": "low-2t",
+          "logical_cpu_ids": [
+            1,
+            2
+          ],
+          "cpu_threads": 2,
+          "dedicated_ram_gb_planner_input": 1.0,
+          "local_rows": 784,
+          "assigned_depth": 3,
+          "assigned_width": 64,
+          "active_parameters": 41282,
+          "fp32_download_bytes": 165128,
+          "mean_local_seconds_per_round": 0.3809035625308752,
+          "test_metrics": {
+            "accuracy": 0.8337408312958435,
+            "macro_f1": 0.8159997882925796
+          }
+        },
+        {
+          "profile": "edge-1t",
+          "logical_cpu_ids": [
+            0
+          ],
+          "cpu_threads": 1,
+          "dedicated_ram_gb_planner_input": 0.5,
+          "local_rows": 1031,
+          "assigned_depth": 3,
+          "assigned_width": 64,
+          "active_parameters": 41282,
+          "fp32_download_bytes": 165128,
+          "mean_local_seconds_per_round": 0.3906053875107318,
+          "test_metrics": {
+            "accuracy": 0.8337408312958435,
+            "macro_f1": 0.8159997882925796
+          }
+        }
+      ],
+      "full_global_test_metrics": {
+        "accuracy": 0.8337408312958435,
+        "macro_f1": 0.8159997882925796
+      },
+      "mean_client_host_validation_metrics": {
+        "accuracy": 0.8292682926829268,
+        "macro_f1": 0.8048614652388237
+      },
+      "full_global_host_validation_metrics": {
+        "accuracy": 0.8292682926829268,
+        "macro_f1": 0.8048614652388237
+      },
+      "worker_ready": [
+        {
+          "ready": true,
+          "affinity": [
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14
+          ],
+          "local_rows": 55
+        },
+        {
+          "ready": true,
+          "affinity": [
+            3,
+            4,
+            5,
+            6
+          ],
+          "local_rows": 582
+        },
+        {
+          "ready": true,
+          "affinity": [
+            1,
+            2
+          ],
+          "local_rows": 784
+        },
+        {
+          "ready": true,
+          "affinity": [
+            0
+          ],
+          "local_rows": 1031
+        }
+      ],
+      "elapsed_including_worker_startup_seconds": 20.20075190020725
+    },
+    {
+      "seed": 3,
+      "method": "website_budget_elastic",
+      "rounds": 8,
+      "local_epochs": 3,
+      "wall_seconds_rounds": 3.6320534008555114,
+      "median_round_seconds": 0.06276310002431273,
+      "mean_local_seconds_per_round_by_client": [
+        0.378045987454243,
+        0.4395764749497175,
+        0.36740510002709925,
+        0.37361612502718344
+      ],
+      "assigned_depth_width": [
+        {
+          "depth": 3,
+          "width": 64
+        },
+        {
+          "depth": 2,
+          "width": 32
+        },
+        {
+          "depth": 2,
+          "width": 16
+        },
+        {
+          "depth": 2,
+          "width": 16
+        }
+      ],
+      "active_parameters_per_client": [
+        41282,
+        17538,
+        8514,
+        8514
+      ],
+      "fp32_download_bytes_per_client": [
+        165128,
+        70152,
+        34056,
+        34056
+      ],
+      "coordinate_coverage": 1.0,
+      "capacity_selected_test_accuracy": 0.6528117359413204,
+      "capacity_selected_test_macro_f1": 0.5844136090580887,
+      "per_client_test_metrics": [
+        {
+          "accuracy": 0.3899755501222494,
+          "macro_f1": 0.31096312426674766
+        },
+        {
+          "accuracy": 0.6833740831295844,
+          "macro_f1": 0.5160349321436485
+        },
+        {
+          "accuracy": 0.7689486552567237,
+          "macro_f1": 0.7553281899109792
+        },
+        {
+          "accuracy": 0.7689486552567237,
+          "macro_f1": 0.7553281899109792
+        }
+      ],
+      "device_results": [
+        {
+          "profile": "high-8t",
+          "logical_cpu_ids": [
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14
+          ],
+          "cpu_threads": 8,
+          "dedicated_ram_gb_planner_input": 4.0,
+          "local_rows": 55,
+          "assigned_depth": 3,
+          "assigned_width": 64,
+          "active_parameters": 41282,
+          "fp32_download_bytes": 165128,
+          "mean_local_seconds_per_round": 0.378045987454243,
+          "test_metrics": {
+            "accuracy": 0.3899755501222494,
+            "macro_f1": 0.31096312426674766
+          }
+        },
+        {
+          "profile": "mid-4t",
+          "logical_cpu_ids": [
+            3,
+            4,
+            5,
+            6
+          ],
+          "cpu_threads": 4,
+          "dedicated_ram_gb_planner_input": 2.0,
+          "local_rows": 582,
+          "assigned_depth": 2,
+          "assigned_width": 32,
+          "active_parameters": 17538,
+          "fp32_download_bytes": 70152,
+          "mean_local_seconds_per_round": 0.4395764749497175,
+          "test_metrics": {
+            "accuracy": 0.6833740831295844,
+            "macro_f1": 0.5160349321436485
+          }
+        },
+        {
+          "profile": "low-2t",
+          "logical_cpu_ids": [
+            1,
+            2
+          ],
+          "cpu_threads": 2,
+          "dedicated_ram_gb_planner_input": 1.0,
+          "local_rows": 784,
+          "assigned_depth": 2,
+          "assigned_width": 16,
+          "active_parameters": 8514,
+          "fp32_download_bytes": 34056,
+          "mean_local_seconds_per_round": 0.36740510002709925,
+          "test_metrics": {
+            "accuracy": 0.7689486552567237,
+            "macro_f1": 0.7553281899109792
+          }
+        },
+        {
+          "profile": "edge-1t",
+          "logical_cpu_ids": [
+            0
+          ],
+          "cpu_threads": 1,
+          "dedicated_ram_gb_planner_input": 0.5,
+          "local_rows": 1031,
+          "assigned_depth": 2,
+          "assigned_width": 16,
+          "active_parameters": 8514,
+          "fp32_download_bytes": 34056,
+          "mean_local_seconds_per_round": 0.37361612502718344,
+          "test_metrics": {
+            "accuracy": 0.7689486552567237,
+            "macro_f1": 0.7553281899109792
+          }
+        }
+      ],
+      "full_global_test_metrics": {
+        "accuracy": 0.3899755501222494,
+        "macro_f1": 0.31096312426674766
+      },
+      "mean_client_host_validation_metrics": {
+        "accuracy": 0.6478658536585367,
+        "macro_f1": 0.5707639673509489
+      },
+      "full_global_host_validation_metrics": {
+        "accuracy": 0.38414634146341464,
+        "macro_f1": 0.30610364040048593
+      },
+      "worker_ready": [
+        {
+          "ready": true,
+          "affinity": [
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14
+          ],
+          "local_rows": 55
+        },
+        {
+          "ready": true,
+          "affinity": [
+            3,
+            4,
+            5,
+            6
+          ],
+          "local_rows": 582
+        },
+        {
+          "ready": true,
+          "affinity": [
+            1,
+            2
+          ],
+          "local_rows": 784
+        },
+        {
+          "ready": true,
+          "affinity": [
+            0
+          ],
+          "local_rows": 1031
+        }
+      ],
+      "elapsed_including_worker_startup_seconds": 21.385163300205022
+    },
+    {
+      "seed": 4,
+      "method": "fedavg_full",
+      "rounds": 8,
+      "local_epochs": 3,
+      "wall_seconds_rounds": 4.095993699040264,
+      "median_round_seconds": 0.10863784980028868,
+      "mean_local_seconds_per_round_by_client": [
+        0.4558880999684334,
+        0.412311187479645,
+        0.4242247875081375,
+        0.34818653750699013
+      ],
+      "assigned_depth_width": [
+        {
+          "depth": 3,
+          "width": 64
+        },
+        {
+          "depth": 3,
+          "width": 64
+        },
+        {
+          "depth": 3,
+          "width": 64
+        },
+        {
+          "depth": 3,
+          "width": 64
+        }
+      ],
+      "active_parameters_per_client": [
+        41282,
+        41282,
+        41282,
+        41282
+      ],
+      "fp32_download_bytes_per_client": [
+        165128,
+        165128,
+        165128,
+        165128
+      ],
+      "coordinate_coverage": 1.0,
+      "capacity_selected_test_accuracy": 0.812958435207824,
+      "capacity_selected_test_macro_f1": 0.806359977905784,
+      "per_client_test_metrics": [
+        {
+          "accuracy": 0.812958435207824,
+          "macro_f1": 0.806359977905784
+        },
+        {
+          "accuracy": 0.812958435207824,
+          "macro_f1": 0.806359977905784
+        },
+        {
+          "accuracy": 0.812958435207824,
+          "macro_f1": 0.806359977905784
+        },
+        {
+          "accuracy": 0.812958435207824,
+          "macro_f1": 0.806359977905784
+        }
+      ],
+      "device_results": [
+        {
+          "profile": "mid-4t",
+          "logical_cpu_ids": [
+            3,
+            4,
+            5,
+            6
+          ],
+          "cpu_threads": 4,
+          "dedicated_ram_gb_planner_input": 2.0,
+          "local_rows": 287,
+          "assigned_depth": 3,
+          "assigned_width": 64,
+          "active_parameters": 41282,
+          "fp32_download_bytes": 165128,
+          "mean_local_seconds_per_round": 0.4558880999684334,
+          "test_metrics": {
+            "accuracy": 0.812958435207824,
+            "macro_f1": 0.806359977905784
+          }
+        },
+        {
+          "profile": "high-8t",
+          "logical_cpu_ids": [
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14
+          ],
+          "cpu_threads": 8,
+          "dedicated_ram_gb_planner_input": 4.0,
+          "local_rows": 103,
+          "assigned_depth": 3,
+          "assigned_width": 64,
+          "active_parameters": 41282,
+          "fp32_download_bytes": 165128,
+          "mean_local_seconds_per_round": 0.412311187479645,
+          "test_metrics": {
+            "accuracy": 0.812958435207824,
+            "macro_f1": 0.806359977905784
+          }
+        },
+        {
+          "profile": "low-2t",
+          "logical_cpu_ids": [
+            1,
+            2
+          ],
+          "cpu_threads": 2,
+          "dedicated_ram_gb_planner_input": 1.0,
+          "local_rows": 1760,
+          "assigned_depth": 3,
+          "assigned_width": 64,
+          "active_parameters": 41282,
+          "fp32_download_bytes": 165128,
+          "mean_local_seconds_per_round": 0.4242247875081375,
+          "test_metrics": {
+            "accuracy": 0.812958435207824,
+            "macro_f1": 0.806359977905784
+          }
+        },
+        {
+          "profile": "edge-1t",
+          "logical_cpu_ids": [
+            0
+          ],
+          "cpu_threads": 1,
+          "dedicated_ram_gb_planner_input": 0.5,
+          "local_rows": 302,
+          "assigned_depth": 3,
+          "assigned_width": 64,
+          "active_parameters": 41282,
+          "fp32_download_bytes": 165128,
+          "mean_local_seconds_per_round": 0.34818653750699013,
+          "test_metrics": {
+            "accuracy": 0.812958435207824,
+            "macro_f1": 0.806359977905784
+          }
+        }
+      ],
+      "full_global_test_metrics": {
+        "accuracy": 0.812958435207824,
+        "macro_f1": 0.806359977905784
+      },
+      "mean_client_host_validation_metrics": {
+        "accuracy": 0.8292682926829268,
+        "macro_f1": 0.8206249999999999
+      },
+      "full_global_host_validation_metrics": {
+        "accuracy": 0.8292682926829268,
+        "macro_f1": 0.8206249999999999
+      },
+      "worker_ready": [
+        {
+          "ready": true,
+          "affinity": [
+            3,
+            4,
+            5,
+            6
+          ],
+          "local_rows": 287
+        },
+        {
+          "ready": true,
+          "affinity": [
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14
+          ],
+          "local_rows": 103
+        },
+        {
+          "ready": true,
+          "affinity": [
+            1,
+            2
+          ],
+          "local_rows": 1760
+        },
+        {
+          "ready": true,
+          "affinity": [
+            0
+          ],
+          "local_rows": 302
+        }
+      ],
+      "elapsed_including_worker_startup_seconds": 20.733797899913043
+    },
+    {
+      "seed": 4,
+      "method": "website_budget_elastic",
+      "rounds": 8,
+      "local_epochs": 3,
+      "wall_seconds_rounds": 3.6334264995530248,
+      "median_round_seconds": 0.08641689992509782,
+      "mean_local_seconds_per_round_by_client": [
+        0.4071836124639958,
+        0.38189131242688745,
+        0.39256573747843504,
+        0.332619224966038
+      ],
+      "assigned_depth_width": [
+        {
+          "depth": 2,
+          "width": 32
+        },
+        {
+          "depth": 3,
+          "width": 64
+        },
+        {
+          "depth": 2,
+          "width": 16
+        },
+        {
+          "depth": 2,
+          "width": 16
+        }
+      ],
+      "active_parameters_per_client": [
+        17538,
+        41282,
+        8514,
+        8514
+      ],
+      "fp32_download_bytes_per_client": [
+        70152,
+        165128,
+        34056,
+        34056
+      ],
+      "coordinate_coverage": 1.0,
+      "capacity_selected_test_accuracy": 0.7096577017114916,
+      "capacity_selected_test_macro_f1": 0.6579753872661894,
+      "per_client_test_metrics": [
+        {
+          "accuracy": 0.8019559902200489,
+          "macro_f1": 0.7517032040472176
+        },
+        {
+          "accuracy": 0.3643031784841076,
+          "macro_f1": 0.2670250896057348
+        },
+        {
+          "accuracy": 0.8361858190709046,
+          "macro_f1": 0.8065866277059026
+        },
+        {
+          "accuracy": 0.8361858190709046,
+          "macro_f1": 0.8065866277059026
+        }
+      ],
+      "device_results": [
+        {
+          "profile": "mid-4t",
+          "logical_cpu_ids": [
+            3,
+            4,
+            5,
+            6
+          ],
+          "cpu_threads": 4,
+          "dedicated_ram_gb_planner_input": 2.0,
+          "local_rows": 287,
+          "assigned_depth": 2,
+          "assigned_width": 32,
+          "active_parameters": 17538,
+          "fp32_download_bytes": 70152,
+          "mean_local_seconds_per_round": 0.4071836124639958,
+          "test_metrics": {
+            "accuracy": 0.8019559902200489,
+            "macro_f1": 0.7517032040472176
+          }
+        },
+        {
+          "profile": "high-8t",
+          "logical_cpu_ids": [
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14
+          ],
+          "cpu_threads": 8,
+          "dedicated_ram_gb_planner_input": 4.0,
+          "local_rows": 103,
+          "assigned_depth": 3,
+          "assigned_width": 64,
+          "active_parameters": 41282,
+          "fp32_download_bytes": 165128,
+          "mean_local_seconds_per_round": 0.38189131242688745,
+          "test_metrics": {
+            "accuracy": 0.3643031784841076,
+            "macro_f1": 0.2670250896057348
+          }
+        },
+        {
+          "profile": "low-2t",
+          "logical_cpu_ids": [
+            1,
+            2
+          ],
+          "cpu_threads": 2,
+          "dedicated_ram_gb_planner_input": 1.0,
+          "local_rows": 1760,
+          "assigned_depth": 2,
+          "assigned_width": 16,
+          "active_parameters": 8514,
+          "fp32_download_bytes": 34056,
+          "mean_local_seconds_per_round": 0.39256573747843504,
+          "test_metrics": {
+            "accuracy": 0.8361858190709046,
+            "macro_f1": 0.8065866277059026
+          }
+        },
+        {
+          "profile": "edge-1t",
+          "logical_cpu_ids": [
+            0
+          ],
+          "cpu_threads": 1,
+          "dedicated_ram_gb_planner_input": 0.5,
+          "local_rows": 302,
+          "assigned_depth": 2,
+          "assigned_width": 16,
+          "active_parameters": 8514,
+          "fp32_download_bytes": 34056,
+          "mean_local_seconds_per_round": 0.332619224966038,
+          "test_metrics": {
+            "accuracy": 0.8361858190709046,
+            "macro_f1": 0.8065866277059026
+          }
+        }
+      ],
+      "full_global_test_metrics": {
+        "accuracy": 0.3643031784841076,
+        "macro_f1": 0.2670250896057348
+      },
+      "mean_client_host_validation_metrics": {
+        "accuracy": 0.6905487804878049,
+        "macro_f1": 0.6334637199874378
+      },
+      "full_global_host_validation_metrics": {
+        "accuracy": 0.36585365853658536,
+        "macro_f1": 0.26785714285714285
+      },
+      "worker_ready": [
+        {
+          "ready": true,
+          "affinity": [
+            3,
+            4,
+            5,
+            6
+          ],
+          "local_rows": 287
+        },
+        {
+          "ready": true,
+          "affinity": [
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14
+          ],
+          "local_rows": 103
+        },
+        {
+          "ready": true,
+          "affinity": [
+            1,
+            2
+          ],
+          "local_rows": 1760
+        },
+        {
+          "ready": true,
+          "affinity": [
+            0
+          ],
+          "local_rows": 302
+        }
+      ],
+      "elapsed_including_worker_startup_seconds": 19.93368069967255
+    },
+    {
+      "seed": 5,
+      "method": "fedavg_full",
+      "rounds": 8,
+      "local_epochs": 3,
+      "wall_seconds_rounds": 4.650613599456847,
+      "median_round_seconds": 0.16457899962551892,
+      "mean_local_seconds_per_round_by_client": [
+        0.36551162495743483,
+        0.43253335007466376,
+        0.5717386625474319,
+        0.40984919999027625
+      ],
+      "assigned_depth_width": [
+        {
+          "depth": 3,
+          "width": 64
+        },
+        {
+          "depth": 3,
+          "width": 64
+        },
+        {
+          "depth": 3,
+          "width": 64
+        },
+        {
+          "depth": 3,
+          "width": 64
+        }
+      ],
+      "active_parameters_per_client": [
+        41282,
+        41282,
+        41282,
+        41282
+      ],
+      "fp32_download_bytes_per_client": [
+        165128,
+        165128,
+        165128,
+        165128
+      ],
+      "coordinate_coverage": 1.0,
+      "capacity_selected_test_accuracy": 0.8105134474327629,
+      "capacity_selected_test_macro_f1": 0.7901171827796437,
+      "per_client_test_metrics": [
+        {
+          "accuracy": 0.8105134474327629,
+          "macro_f1": 0.7901171827796437
+        },
+        {
+          "accuracy": 0.8105134474327629,
+          "macro_f1": 0.7901171827796437
+        },
+        {
+          "accuracy": 0.8105134474327629,
+          "macro_f1": 0.7901171827796437
+        },
+        {
+          "accuracy": 0.8105134474327629,
+          "macro_f1": 0.7901171827796437
+        }
+      ],
+      "device_results": [
+        {
+          "profile": "edge-1t",
+          "logical_cpu_ids": [
+            0
+          ],
+          "cpu_threads": 1,
+          "dedicated_ram_gb_planner_input": 0.5,
+          "local_rows": 745,
+          "assigned_depth": 3,
+          "assigned_width": 64,
+          "active_parameters": 41282,
+          "fp32_download_bytes": 165128,
+          "mean_local_seconds_per_round": 0.36551162495743483,
+          "test_metrics": {
+            "accuracy": 0.8105134474327629,
+            "macro_f1": 0.7901171827796437
+          }
+        },
+        {
+          "profile": "high-8t",
+          "logical_cpu_ids": [
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14
+          ],
+          "cpu_threads": 8,
+          "dedicated_ram_gb_planner_input": 4.0,
+          "local_rows": 187,
+          "assigned_depth": 3,
+          "assigned_width": 64,
+          "active_parameters": 41282,
+          "fp32_download_bytes": 165128,
+          "mean_local_seconds_per_round": 0.43253335007466376,
+          "test_metrics": {
+            "accuracy": 0.8105134474327629,
+            "macro_f1": 0.7901171827796437
+          }
+        },
+        {
+          "profile": "mid-4t",
+          "logical_cpu_ids": [
+            3,
+            4,
+            5,
+            6
+          ],
+          "cpu_threads": 4,
+          "dedicated_ram_gb_planner_input": 2.0,
+          "local_rows": 1139,
+          "assigned_depth": 3,
+          "assigned_width": 64,
+          "active_parameters": 41282,
+          "fp32_download_bytes": 165128,
+          "mean_local_seconds_per_round": 0.5717386625474319,
+          "test_metrics": {
+            "accuracy": 0.8105134474327629,
+            "macro_f1": 0.7901171827796437
+          }
+        },
+        {
+          "profile": "low-2t",
+          "logical_cpu_ids": [
+            1,
+            2
+          ],
+          "cpu_threads": 2,
+          "dedicated_ram_gb_planner_input": 1.0,
+          "local_rows": 381,
+          "assigned_depth": 3,
+          "assigned_width": 64,
+          "active_parameters": 41282,
+          "fp32_download_bytes": 165128,
+          "mean_local_seconds_per_round": 0.40984919999027625,
+          "test_metrics": {
+            "accuracy": 0.8105134474327629,
+            "macro_f1": 0.7901171827796437
+          }
+        }
+      ],
+      "full_global_test_metrics": {
+        "accuracy": 0.8105134474327629,
+        "macro_f1": 0.7901171827796437
+      },
+      "mean_client_host_validation_metrics": {
+        "accuracy": 0.8048780487804879,
+        "macro_f1": 0.7769845317015128
+      },
+      "full_global_host_validation_metrics": {
+        "accuracy": 0.8048780487804879,
+        "macro_f1": 0.7769845317015128
+      },
+      "worker_ready": [
+        {
+          "ready": true,
+          "affinity": [
+            0
+          ],
+          "local_rows": 745
+        },
+        {
+          "ready": true,
+          "affinity": [
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14
+          ],
+          "local_rows": 187
+        },
+        {
+          "ready": true,
+          "affinity": [
+            3,
+            4,
+            5,
+            6
+          ],
+          "local_rows": 1139
+        },
+        {
+          "ready": true,
+          "affinity": [
+            1,
+            2
+          ],
+          "local_rows": 381
+        }
+      ],
+      "elapsed_including_worker_startup_seconds": 21.41436600033194
+    },
+    {
+      "seed": 5,
+      "method": "website_budget_elastic",
+      "rounds": 8,
+      "local_epochs": 3,
+      "wall_seconds_rounds": 3.7300868998281658,
+      "median_round_seconds": 0.10370744997635484,
+      "mean_local_seconds_per_round_by_client": [
+        0.3430573875666596,
+        0.39739185001235455,
+        0.4591720999451354,
+        0.34187270008260384
+      ],
+      "assigned_depth_width": [
+        {
+          "depth": 2,
+          "width": 16
+        },
+        {
+          "depth": 3,
+          "width": 64
+        },
+        {
+          "depth": 2,
+          "width": 32
+        },
+        {
+          "depth": 2,
+          "width": 16
+        }
+      ],
+      "active_parameters_per_client": [
+        8514,
+        41282,
+        17538,
+        8514
+      ],
+      "fp32_download_bytes_per_client": [
+        34056,
+        165128,
+        70152,
+        34056
+      ],
+      "coordinate_coverage": 1.0,
+      "capacity_selected_test_accuracy": 0.6922371638141809,
+      "capacity_selected_test_macro_f1": 0.6463112381267406,
+      "per_client_test_metrics": [
+        {
+          "accuracy": 0.656479217603912,
+          "macro_f1": 0.6561580496006725
+        },
+        {
+          "accuracy": 0.7444987775061125,
+          "macro_f1": 0.6915173681845822
+        },
+        {
+          "accuracy": 0.7114914425427873,
+          "macro_f1": 0.5814114851210352
+        },
+        {
+          "accuracy": 0.656479217603912,
+          "macro_f1": 0.6561580496006725
+        }
+      ],
+      "device_results": [
+        {
+          "profile": "edge-1t",
+          "logical_cpu_ids": [
+            0
+          ],
+          "cpu_threads": 1,
+          "dedicated_ram_gb_planner_input": 0.5,
+          "local_rows": 745,
+          "assigned_depth": 2,
+          "assigned_width": 16,
+          "active_parameters": 8514,
+          "fp32_download_bytes": 34056,
+          "mean_local_seconds_per_round": 0.3430573875666596,
+          "test_metrics": {
+            "accuracy": 0.656479217603912,
+            "macro_f1": 0.6561580496006725
+          }
+        },
+        {
+          "profile": "high-8t",
+          "logical_cpu_ids": [
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14
+          ],
+          "cpu_threads": 8,
+          "dedicated_ram_gb_planner_input": 4.0,
+          "local_rows": 187,
+          "assigned_depth": 3,
+          "assigned_width": 64,
+          "active_parameters": 41282,
+          "fp32_download_bytes": 165128,
+          "mean_local_seconds_per_round": 0.39739185001235455,
+          "test_metrics": {
+            "accuracy": 0.7444987775061125,
+            "macro_f1": 0.6915173681845822
+          }
+        },
+        {
+          "profile": "mid-4t",
+          "logical_cpu_ids": [
+            3,
+            4,
+            5,
+            6
+          ],
+          "cpu_threads": 4,
+          "dedicated_ram_gb_planner_input": 2.0,
+          "local_rows": 1139,
+          "assigned_depth": 2,
+          "assigned_width": 32,
+          "active_parameters": 17538,
+          "fp32_download_bytes": 70152,
+          "mean_local_seconds_per_round": 0.4591720999451354,
+          "test_metrics": {
+            "accuracy": 0.7114914425427873,
+            "macro_f1": 0.5814114851210352
+          }
+        },
+        {
+          "profile": "low-2t",
+          "logical_cpu_ids": [
+            1,
+            2
+          ],
+          "cpu_threads": 2,
+          "dedicated_ram_gb_planner_input": 1.0,
+          "local_rows": 381,
+          "assigned_depth": 2,
+          "assigned_width": 16,
+          "active_parameters": 8514,
+          "fp32_download_bytes": 34056,
+          "mean_local_seconds_per_round": 0.34187270008260384,
+          "test_metrics": {
+            "accuracy": 0.656479217603912,
+            "macro_f1": 0.6561580496006725
+          }
+        }
+      ],
+      "full_global_test_metrics": {
+        "accuracy": 0.7444987775061125,
+        "macro_f1": 0.6915173681845822
+      },
+      "mean_client_host_validation_metrics": {
+        "accuracy": 0.6768292682926829,
+        "macro_f1": 0.6203346666586252
+      },
+      "full_global_host_validation_metrics": {
+        "accuracy": 0.7195121951219512,
+        "macro_f1": 0.6428030303030303
+      },
+      "worker_ready": [
+        {
+          "ready": true,
+          "affinity": [
+            0
+          ],
+          "local_rows": 745
+        },
+        {
+          "ready": true,
+          "affinity": [
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14
+          ],
+          "local_rows": 187
+        },
+        {
+          "ready": true,
+          "affinity": [
+            3,
+            4,
+            5,
+            6
+          ],
+          "local_rows": 1139
+        },
+        {
+          "ready": true,
+          "affinity": [
+            1,
+            2
+          ],
+          "local_rows": 381
+        }
+      ],
+      "elapsed_including_worker_startup_seconds": 20.637867500074208
+    }
+  ]
+}
