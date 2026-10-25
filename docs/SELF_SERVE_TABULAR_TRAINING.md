@@ -91,3 +91,10 @@ independent-test scores, timing definitions, and limits, is documented in
 After a self-serve task completes at least one round, the host dashboard can
 download a ZIP bundle with the latest global weights, preprocessing metadata,
 and a portable prediction script. See [MODEL_EXPORT.md](MODEL_EXPORT.md).
+
+After the final round, an approved participant can reopen the page through
+`client_app.py`, select a separate labeled test CSV, and calculate test
+metrics. The local agent downloads only that participant's assigned tabular
+subnet and computes classification accuracy/macro-F1 or regression RMSE on the
+participant machine. The test CSV is never sent to the coordinator. This
+reports the participant-sized deployment, not the full coordinator model.

@@ -82,6 +82,10 @@ enter.
 5. The host approves the request by the displayed name in `/host`.
 6. The native worker starts for the selected workspace and trains after
    approval. No project ID, generated command, username, or password is needed.
+7. After the final round, an approved participant can choose a separate labeled
+   test CSV in the client page and calculate accuracy/macro-F1 or RMSE locally.
+   The test file stays on that device; the client downloads only its assigned
+   tabular model subnet.
 
 The native client detects available RAM/CPU with `psutil` when installed and
 uses the contribution values entered in the page. It trains locally, encrypts

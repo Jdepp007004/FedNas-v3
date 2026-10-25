@@ -20,7 +20,7 @@ from email.parser import BytesParser
 from email.policy import default as email_default
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
 from shared.encryption import encryption_key_status
 
@@ -37,6 +37,7 @@ _state: dict = {
     "server_url": "",
     "name": "",
     "dataset_path": "",
+    "test_dataset_paths": {},
     "message": "Waiting for the client setup page.",
 }
 
@@ -92,6 +93,75 @@ def _resources() -> dict:
         "source": source,
         "encryption_configured": encryption_key_status()[0],
     }
+
+
+def _evaluate_local_test_csv(payload: dict) -> dict:
+    """Fetch this participant's finished tabular subnet and score a local CSV."""
+    if not isinstance(payload, dict):
+        raise ValueError("Evaluation request must be a JSON object.")
+    server_url = str(payload.get("server_url", "")).strip().rstrip("/")
+    parsed_url = urlparse(server_url)
+    if parsed_url.scheme not in {"http", "https"} or not parsed_url.netloc:
+        raise ValueError("The host URL must start with http:// or https://.")
+    token = str(payload.get("token", "")).strip()
+    if not token:
+        raise ValueError("Reconnect to the host before evaluating this CSV.")
+
+    proj_id = str(payload.get("proj_id", "")).strip()
+    if not re.fullmatch(r"[A-Za-z0-9._-]{1,128}", proj_id):
+        raise ValueError("Choose a valid project before evaluating the test CSV.")
+    with _state_lock:
+        raw_csv_path = _state.get("test_dataset_paths", {}).get(proj_id)
+    if not raw_csv_path:
+        raise ValueError("Upload a test CSV for this project first.")
+    csv_path = Path(raw_csv_path).resolve()
+    runtime_root = RUNTIME_DIR.resolve()
+    if runtime_root not in csv_path.parents or not csv_path.is_file():
+        raise ValueError("The local test CSV is no longer available. Upload it again.")
+
+    try:
+        if str(REPO_ROOT) not in sys.path:
+            sys.path.insert(0, str(REPO_ROOT))
+        from client.api_client import APIClient
+        from client.tabular_fl import evaluate_client_subnet_csv
+
+        client = APIClient(server_url, token=token)
+        model_data = client.fetch_global_model(proj_id)
+        if model_data.get("model_family") != "elastic_tabular":
+            raise ValueError("Test CSV evaluation is currently available for tabular workspaces.")
+        trained_round = int(model_data.get("round", 0))
+        max_rounds = int(model_data.get("max_rounds", 0))
+        if trained_round < max_rounds:
+            raise ValueError(
+                f"The final model is not ready yet (round {trained_round}/{max_rounds})."
+            )
+        if not model_data.get("weights"):
+            raise ValueError("The completed workspace has no model weights to evaluate.")
+
+        task_config = model_data.get("task_config") or {}
+        model_config = model_data.get("model_config") or {}
+        evaluation = evaluate_client_subnet_csv(
+            model_data["weights"],
+            task_config,
+            model_config,
+            str(csv_path),
+            int(model_data["active_depth"]),
+            int(model_data["active_width"]),
+        )
+        return {
+            "status": "evaluated",
+            "task_type": task_config.get("task_type", "tabular"),
+            "target_column": task_config.get("target_column", ""),
+            "rows": evaluation["rows"],
+            "model_round": trained_round,
+            "active_depth": int(model_data["active_depth"]),
+            "active_width": int(model_data["active_width"]),
+            "metrics": evaluation["metrics"],
+        }
+    except ValueError:
+        raise
+    except Exception as exc:
+        raise ValueError(f"Could not evaluate the local test CSV: {exc}") from exc
 
 
 def _multipart_file(content_type: str, body: bytes) -> tuple[str, bytes]:
@@ -189,6 +259,35 @@ class _LocalHandler(BaseHTTPRequestHandler):
                     _state["dataset_path"] = str(destination)
                     _state["message"] = "CSV saved locally. Waiting for host approval."
                 self._send_json({"status": "saved", "path": str(destination), "filename": filename})
+                return
+
+            if path == "/agent/test-dataset":
+                query = parse_qs(urlparse(self.path).query)
+                proj_id = (query.get("proj_id") or [""])[0]
+                if not re.fullmatch(r"[A-Za-z0-9._-]{1,128}", proj_id):
+                    raise ValueError("Choose a valid project before uploading a test CSV.")
+                filename, content = _multipart_file(self.headers.get("Content-Type", ""), body)
+                if not filename.lower().endswith(".csv"):
+                    raise ValueError("Choose a CSV file for model evaluation.")
+                if len(content) > MAX_DATASET_BYTES:
+                    raise ValueError("The selected test CSV is larger than 500 MB.")
+                RUNTIME_DIR.mkdir(parents=True, exist_ok=True)
+                destination = RUNTIME_DIR / f"test_{uuid.uuid4().hex}_{filename}"
+                destination.write_bytes(content)
+                with _state_lock:
+                    paths = _state.setdefault("test_dataset_paths", {})
+                    previous_path = paths.get(proj_id)
+                    paths[proj_id] = str(destination)
+                if previous_path:
+                    previous = Path(previous_path).resolve()
+                    if previous.parent == RUNTIME_DIR.resolve() and previous != destination.resolve():
+                        previous.unlink(missing_ok=True)
+                self._send_json({"status": "saved", "filename": filename, "size_bytes": len(content)})
+                return
+
+            if path == "/agent/evaluate":
+                payload = json.loads(body.decode("utf-8"))
+                self._send_json(_evaluate_local_test_csv(payload))
                 return
 
             if path == "/agent/start":

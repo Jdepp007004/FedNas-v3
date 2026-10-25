@@ -477,3 +477,60 @@ def validate_client_subnet(
     model.to(device)
     metrics = _evaluate(model, loader, task_config, device, active_depth, active_width)
     return {key.removeprefix("validation_"): value for key, value in metrics.items()}
+
+
+def evaluate_client_subnet_csv(
+    global_weights: dict,
+    task_config: dict,
+    model_config: dict,
+    csv_path: str,
+    active_depth: int,
+    active_width: int,
+    batch_size: int = 512,
+    chunk_rows: int = 2048,
+) -> dict:
+    """Score a labeled CSV in bounded-memory chunks using a participant subnet."""
+    torch.set_num_threads(1)
+    model = ElasticTabularSubnet(model_config, active_depth, active_width)
+    load_weights(model, global_weights)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model.to(device)
+    model.eval()
+
+    predictions, targets = [], []
+    for frame in pd.read_csv(csv_path, low_memory=False, chunksize=max(1, int(chunk_rows))):
+        features, encoded_targets = encode_frame(frame, task_config)
+        if len(encoded_targets) == 0:
+            continue
+        for start in range(0, len(encoded_targets), max(1, int(batch_size))):
+            stop = min(start + max(1, int(batch_size)), len(encoded_targets))
+            batch = torch.from_numpy(features[start:stop]).to(device)
+            with torch.no_grad():
+                output = model(batch, active_depth, active_width).detach().cpu()
+            if task_config["task_type"] == "classification":
+                predictions.extend(output.argmax(dim=1).numpy().tolist())
+                targets.extend(encoded_targets[start:stop].astype(int).tolist())
+            else:
+                scale = float(task_config["target_scale"])
+                mean = float(task_config["target_mean"])
+                predictions.extend((output.reshape(-1).numpy() * scale + mean).tolist())
+                targets.extend((encoded_targets[start:stop] * scale + mean).tolist())
+
+    if not targets:
+        raise ValueError("The test CSV has no rows with a usable target value.")
+    if task_config["task_type"] == "classification":
+        actual = np.asarray(targets, dtype=int)
+        predicted = np.asarray(predictions, dtype=int)
+        metrics = {
+            "accuracy": float(accuracy_score(actual, predicted)),
+            "macro_f1": float(f1_score(
+                actual,
+                predicted,
+                labels=list(range(len(task_config["classes"]))),
+                average="macro",
+                zero_division=0,
+            )),
+        }
+    else:
+        metrics = {"rmse": float(mean_squared_error(targets, predictions) ** 0.5)}
+    return {"rows": len(targets), "metrics": metrics}

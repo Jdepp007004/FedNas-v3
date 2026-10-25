@@ -42,6 +42,9 @@ results, and limitations. The host setup CSV is uploaded to the coordinator,
 so use public or synthetic setup data for the capstone demonstration. After
 training, the host dashboard downloads the latest tabular model, preprocessing
 settings, and a portable prediction script; see [MODEL_EXPORT.md](docs/MODEL_EXPORT.md).
+After the final round, approved participants can also evaluate a separate test
+CSV from the client page; the test file remains local and the client reports
+metrics for its assigned tabular subnet.
 
 ### Resource-aware federated training benchmark
 
