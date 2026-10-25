@@ -1,0 +1,518 @@
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+
+Loading weights:   0%|          | 0/39 [00:00<?, ?it/s]
+Loading weights: 100%|##########| 39/39 [00:00<00:00, 8189.95it/s]
+[transformers] BertModel LOAD REPORT from: google/bert_uncased_L-2_H-128_A-2
+Key                                        | Status     |  | 
+-------------------------------------------+------------+--+-
+cls.predictions.transform.dense.weight     | UNEXPECTED |  | 
+cls.seq_relationship.bias                  | UNEXPECTED |  | 
+cls.predictions.bias                       | UNEXPECTED |  | 
+cls.seq_relationship.weight                | UNEXPECTED |  | 
+cls.predictions.transform.LayerNorm.bias   | UNEXPECTED |  | 
+cls.predictions.transform.dense.bias       | UNEXPECTED |  | 
+cls.predictions.transform.LayerNorm.weight | UNEXPECTED |  | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+
+Loading weights:   0%|          | 0/39 [00:00<?, ?it/s]
+Loading weights: 100%|##########| 39/39 [00:00<00:00, 5501.56it/s]
+[transformers] BertModel LOAD REPORT from: google/bert_uncased_L-2_H-128_A-2
+Key                                        | Status     |  | 
+-------------------------------------------+------------+--+-
+cls.predictions.transform.dense.weight     | UNEXPECTED |  | 
+cls.seq_relationship.bias                  | UNEXPECTED |  | 
+cls.predictions.bias                       | UNEXPECTED |  | 
+cls.seq_relationship.weight                | UNEXPECTED |  | 
+cls.predictions.transform.LayerNorm.bias   | UNEXPECTED |  | 
+cls.predictions.transform.dense.bias       | UNEXPECTED |  | 
+cls.predictions.transform.LayerNorm.weight | UNEXPECTED |  | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+completed seed=1 method=fedavg
+completed seed=1 method=fedprox
+completed seed=1 method=heterofl
+completed seed=1 method=fedrolex
+completed seed=1 method=maxnet
+completed seed=1 method=cc_efl
+completed seed=1 method=cc_efl_no_prox
+completed seed=1 method=cc_efl_uniform
+completed seed=1 method=cc_efl_random_window
+
+Loading weights:   0%|          | 0/39 [00:00<?, ?it/s]
+Loading weights: 100%|##########| 39/39 [00:00<00:00, 5744.41it/s]
+[transformers] BertModel LOAD REPORT from: google/bert_uncased_L-2_H-128_A-2
+Key                                        | Status     |  | 
+-------------------------------------------+------------+--+-
+cls.predictions.transform.dense.weight     | UNEXPECTED |  | 
+cls.seq_relationship.bias                  | UNEXPECTED |  | 
+cls.predictions.bias                       | UNEXPECTED |  | 
+cls.seq_relationship.weight                | UNEXPECTED |  | 
+cls.predictions.transform.LayerNorm.bias   | UNEXPECTED |  | 
+cls.predictions.transform.dense.bias       | UNEXPECTED |  | 
+cls.predictions.transform.LayerNorm.weight | UNEXPECTED |  | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+completed seed=2 method=fedavg
+completed seed=2 method=fedprox
+completed seed=2 method=heterofl
+completed seed=2 method=fedrolex
+completed seed=2 method=maxnet
+completed seed=2 method=cc_efl
+completed seed=2 method=cc_efl_no_prox
+completed seed=2 method=cc_efl_uniform
+completed seed=2 method=cc_efl_random_window
+
+Loading weights:   0%|          | 0/39 [00:00<?, ?it/s]
+Loading weights: 100%|##########| 39/39 [00:00<00:00, 4751.99it/s]
+[transformers] BertModel LOAD REPORT from: google/bert_uncased_L-2_H-128_A-2
+Key                                        | Status     |  | 
+-------------------------------------------+------------+--+-
+cls.predictions.transform.dense.weight     | UNEXPECTED |  | 
+cls.seq_relationship.bias                  | UNEXPECTED |  | 
+cls.predictions.bias                       | UNEXPECTED |  | 
+cls.seq_relationship.weight                | UNEXPECTED |  | 
+cls.predictions.transform.LayerNorm.bias   | UNEXPECTED |  | 
+cls.predictions.transform.dense.bias       | UNEXPECTED |  | 
+cls.predictions.transform.LayerNorm.weight | UNEXPECTED |  | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+completed seed=3 method=fedavg
+completed seed=3 method=fedprox
+completed seed=3 method=heterofl
+completed seed=3 method=fedrolex
+completed seed=3 method=maxnet
+completed seed=3 method=cc_efl
+completed seed=3 method=cc_efl_no_prox
+completed seed=3 method=cc_efl_uniform
+completed seed=3 method=cc_efl_random_window
+
+Loading weights:   0%|          | 0/39 [00:00<?, ?it/s]
+Loading weights: 100%|##########| 39/39 [00:00<00:00, 7623.52it/s]
+[transformers] BertModel LOAD REPORT from: google/bert_uncased_L-2_H-128_A-2
+Key                                        | Status     |  | 
+-------------------------------------------+------------+--+-
+cls.predictions.transform.dense.weight     | UNEXPECTED |  | 
+cls.seq_relationship.bias                  | UNEXPECTED |  | 
+cls.predictions.bias                       | UNEXPECTED |  | 
+cls.seq_relationship.weight                | UNEXPECTED |  | 
+cls.predictions.transform.LayerNorm.bias   | UNEXPECTED |  | 
+cls.predictions.transform.dense.bias       | UNEXPECTED |  | 
+cls.predictions.transform.LayerNorm.weight | UNEXPECTED |  | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+completed seed=4 method=fedavg
+completed seed=4 method=fedprox
+completed seed=4 method=heterofl
+completed seed=4 method=fedrolex
+completed seed=4 method=maxnet
+completed seed=4 method=cc_efl
+completed seed=4 method=cc_efl_no_prox
+completed seed=4 method=cc_efl_uniform
+completed seed=4 method=cc_efl_random_window
+
+Loading weights:   0%|          | 0/39 [00:00<?, ?it/s]
+Loading weights: 100%|##########| 39/39 [00:00<00:00, 7451.28it/s]
+[transformers] BertModel LOAD REPORT from: google/bert_uncased_L-2_H-128_A-2
+Key                                        | Status     |  | 
+-------------------------------------------+------------+--+-
+cls.predictions.transform.dense.weight     | UNEXPECTED |  | 
+cls.seq_relationship.bias                  | UNEXPECTED |  | 
+cls.predictions.bias                       | UNEXPECTED |  | 
+cls.seq_relationship.weight                | UNEXPECTED |  | 
+cls.predictions.transform.LayerNorm.bias   | UNEXPECTED |  | 
+cls.predictions.transform.dense.bias       | UNEXPECTED |  | 
+cls.predictions.transform.LayerNorm.weight | UNEXPECTED |  | 
+
+Notes:
+- UNEXPECTED:	can be ignored when loading from different task/architecture; not ok if you expect identical arch.
+completed seed=5 method=fedavg
+completed seed=5 method=fedprox
+completed seed=5 method=heterofl
+completed seed=5 method=fedrolex
+completed seed=5 method=maxnet
+completed seed=5 method=cc_efl
+completed seed=5 method=cc_efl_no_prox
+completed seed=5 method=cc_efl_uniform
+completed seed=5 method=cc_efl_random_window
+{
+  "output": ".benchmarks\\pretrained_sms\\sms_bert_tiny_lora_balanced_5r_5seeds_v1.json",
+  "centralized_test_macro_f1": {
+    "n": 5,
+    "mean": 0.8547173595869536,
+    "std": 0.024596488284536096,
+    "ci95_low": 0.8241816817073313,
+    "ci95_high": 0.8852530374665759
+  },
+  "federated_summary": [
+    {
+      "method": "fedavg",
+      "seeds": 5,
+      "capacity_weighted_test_macro_f1": {
+        "n": 5,
+        "mean": 0.5913805801232979,
+        "std": 0.225951430676886,
+        "ci95_low": 0.31086980054477564,
+        "ci95_high": 0.8718913597018201
+      },
+      "capacity_weighted_test_accuracy": {
+        "n": 5,
+        "mean": 0.7540812223562525,
+        "std": 0.24839366648279262,
+        "ci95_low": 0.4457091938246212,
+        "ci95_high": 1.0
+      },
+      "mean_active_trainable_parameters_per_client": 2306.0,
+      "full_rank_trainable_parameters": 2306,
+      "mean_parameter_coordinates_uploaded_per_round": 13836.0,
+      "mean_upload_bytes_per_round_float32": 55344.0,
+      "mean_download_bytes_per_round_float32": 55344.0,
+      "mean_rank_coordinate_coverage": 1.0,
+      "mean_wall_clock_seconds": 61.18315833988599,
+      "upload_payload_reduction_vs_fedavg": 0.0
+    },
+    {
+      "method": "fedprox",
+      "seeds": 5,
+      "capacity_weighted_test_macro_f1": {
+        "n": 5,
+        "mean": 0.5913805801232979,
+        "std": 0.225951430676886,
+        "ci95_low": 0.31086980054477564,
+        "ci95_high": 0.8718913597018201
+      },
+      "capacity_weighted_test_accuracy": {
+        "n": 5,
+        "mean": 0.7540812223562525,
+        "std": 0.24839366648279262,
+        "ci95_low": 0.4457091938246212,
+        "ci95_high": 1.0
+      },
+      "mean_active_trainable_parameters_per_client": 2306.0,
+      "full_rank_trainable_parameters": 2306,
+      "mean_parameter_coordinates_uploaded_per_round": 13836.0,
+      "mean_upload_bytes_per_round_float32": 55344.0,
+      "mean_download_bytes_per_round_float32": 55344.0,
+      "mean_rank_coordinate_coverage": 1.0,
+      "mean_wall_clock_seconds": 62.706281600007785,
+      "upload_payload_reduction_vs_fedavg": 0.0
+    },
+    {
+      "method": "heterofl",
+      "seeds": 5,
+      "capacity_weighted_test_macro_f1": {
+        "n": 5,
+        "mean": 0.5913790201234345,
+        "std": 0.2263242178034901,
+        "ci95_low": 0.31040543839673695,
+        "ci95_high": 0.872352601850132
+      },
+      "capacity_weighted_test_accuracy": {
+        "n": 5,
+        "mean": 0.7537595496582228,
+        "std": 0.24913035837880318,
+        "ci95_low": 0.4444729439652961,
+        "ci95_high": 1.0
+      },
+      "mean_active_trainable_parameters_per_client": 1282.0,
+      "full_rank_trainable_parameters": 2306,
+      "mean_parameter_coordinates_uploaded_per_round": 7692.0,
+      "mean_upload_bytes_per_round_float32": 30768.0,
+      "mean_download_bytes_per_round_float32": 30768.0,
+      "mean_rank_coordinate_coverage": 0.75,
+      "mean_wall_clock_seconds": 61.89384836005047,
+      "upload_payload_reduction_vs_fedavg": 0.44405897658282745
+    },
+    {
+      "method": "fedrolex",
+      "seeds": 5,
+      "capacity_weighted_test_macro_f1": {
+        "n": 5,
+        "mean": 0.5911633542408204,
+        "std": 0.22633739894503263,
+        "ci95_low": 0.3101734085890141,
+        "ci95_high": 0.8721532998926268
+      },
+      "capacity_weighted_test_accuracy": {
+        "n": 5,
+        "mean": 0.7537595496582228,
+        "std": 0.2491021267690829,
+        "ci95_low": 0.44450799251899487,
+        "ci95_high": 1.0
+      },
+      "mean_active_trainable_parameters_per_client": 1282.0,
+      "full_rank_trainable_parameters": 2306,
+      "mean_parameter_coordinates_uploaded_per_round": 7692.0,
+      "mean_upload_bytes_per_round_float32": 30768.0,
+      "mean_download_bytes_per_round_float32": 30768.0,
+      "mean_rank_coordinate_coverage": 1.0,
+      "mean_wall_clock_seconds": 61.807353959977625,
+      "upload_payload_reduction_vs_fedavg": 0.44405897658282745
+    },
+    {
+      "method": "maxnet",
+      "seeds": 5,
+      "capacity_weighted_test_macro_f1": {
+        "n": 5,
+        "mean": 0.5874142223474298,
+        "std": 0.2309633250966092,
+        "ci95_low": 0.300681351558287,
+        "ci95_high": 0.8741470931365726
+      },
+      "capacity_weighted_test_accuracy": {
+        "n": 5,
+        "mean": 0.7486127864897467,
+        "std": 0.25528502187185936,
+        "ci95_low": 0.4316853818458742,
+        "ci95_high": 1.0
+      },
+      "mean_active_trainable_parameters_per_client": 1282.0,
+      "full_rank_trainable_parameters": 2306,
+      "mean_parameter_coordinates_uploaded_per_round": 7692.0,
+      "mean_upload_bytes_per_round_float32": 30768.0,
+      "mean_download_bytes_per_round_float32": 30768.0,
+      "mean_rank_coordinate_coverage": 0.75,
+      "mean_wall_clock_seconds": 63.937276880024,
+      "upload_payload_reduction_vs_fedavg": 0.44405897658282745
+    },
+    {
+      "method": "cc_efl",
+      "seeds": 5,
+      "capacity_weighted_test_macro_f1": {
+        "n": 5,
+        "mean": 0.5876561792168294,
+        "std": 0.231099737587698,
+        "ci95_low": 0.3007539571024707,
+        "ci95_high": 0.8745584013311882
+      },
+      "capacity_weighted_test_accuracy": {
+        "n": 5,
+        "mean": 0.7488540410132691,
+        "std": 0.255357400069524,
+        "ci95_low": 0.4318367813744954,
+        "ci95_high": 1.0
+      },
+      "mean_active_trainable_parameters_per_client": 1282.0,
+      "full_rank_trainable_parameters": 2306,
+      "mean_parameter_coordinates_uploaded_per_round": 7692.0,
+      "mean_upload_bytes_per_round_float32": 30768.0,
+      "mean_download_bytes_per_round_float32": 30768.0,
+      "mean_rank_coordinate_coverage": 1.0,
+      "mean_wall_clock_seconds": 62.14690822008997,
+      "upload_payload_reduction_vs_fedavg": 0.44405897658282745
+    },
+    {
+      "method": "cc_efl_no_prox",
+      "seeds": 5,
+      "capacity_weighted_test_macro_f1": {
+        "n": 5,
+        "mean": 0.5876561792168294,
+        "std": 0.231099737587698,
+        "ci95_low": 0.3007539571024707,
+        "ci95_high": 0.8745584013311882
+      },
+      "capacity_weighted_test_accuracy": {
+        "n": 5,
+        "mean": 0.7488540410132691,
+        "std": 0.255357400069524,
+        "ci95_low": 0.4318367813744954,
+        "ci95_high": 1.0
+      },
+      "mean_active_trainable_parameters_per_client": 1282.0,
+      "full_rank_trainable_parameters": 2306,
+      "mean_parameter_coordinates_uploaded_per_round": 7692.0,
+      "mean_upload_bytes_per_round_float32": 30768.0,
+      "mean_download_bytes_per_round_float32": 30768.0,
+      "mean_rank_coordinate_coverage": 1.0,
+      "mean_wall_clock_seconds": 60.95773897995241,
+      "upload_payload_reduction_vs_fedavg": 0.44405897658282745
+    },
+    {
+      "method": "cc_efl_uniform",
+      "seeds": 5,
+      "capacity_weighted_test_macro_f1": {
+        "n": 5,
+        "mean": 0.5911633542408204,
+        "std": 0.22633739894503263,
+        "ci95_low": 0.3101734085890141,
+        "ci95_high": 0.8721532998926268
+      },
+      "capacity_weighted_test_accuracy": {
+        "n": 5,
+        "mean": 0.7537595496582228,
+        "std": 0.2491021267690829,
+        "ci95_low": 0.44450799251899487,
+        "ci95_high": 1.0
+      },
+      "mean_active_trainable_parameters_per_client": 1282.0,
+      "full_rank_trainable_parameters": 2306,
+      "mean_parameter_coordinates_uploaded_per_round": 7692.0,
+      "mean_upload_bytes_per_round_float32": 30768.0,
+      "mean_download_bytes_per_round_float32": 30768.0,
+      "mean_rank_coordinate_coverage": 1.0,
+      "mean_wall_clock_seconds": 63.46880478006788,
+      "upload_payload_reduction_vs_fedavg": 0.44405897658282745
+    },
+    {
+      "method": "cc_efl_random_window",
+      "seeds": 5,
+      "capacity_weighted_test_macro_f1": {
+        "n": 5,
+        "mean": 0.5876561792168294,
+        "std": 0.231099737587698,
+        "ci95_low": 0.3007539571024707,
+        "ci95_high": 0.8745584013311882
+      },
+      "capacity_weighted_test_accuracy": {
+        "n": 5,
+        "mean": 0.7488540410132691,
+        "std": 0.255357400069524,
+        "ci95_low": 0.4318367813744954,
+        "ci95_high": 1.0
+      },
+      "mean_active_trainable_parameters_per_client": 1282.0,
+      "full_rank_trainable_parameters": 2306,
+      "mean_parameter_coordinates_uploaded_per_round": 7692.0,
+      "mean_upload_bytes_per_round_float32": 30768.0,
+      "mean_download_bytes_per_round_float32": 30768.0,
+      "mean_rank_coordinate_coverage": 1.0,
+      "mean_wall_clock_seconds": 63.19859609999694,
+      "upload_payload_reduction_vs_fedavg": 0.44405897658282745
+    }
+  ],
+  "paired_inference": [
+    {
+      "reference": "fedavg",
+      "method": "fedprox",
+      "seeds": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "paired_macro_f1_delta_mean": 0.0,
+      "paired_macro_f1_delta_ci95_low": 0.0,
+      "paired_macro_f1_delta_ci95_high": 0.0,
+      "paired_t_test_p_unadjusted": 1.0,
+      "paired_t_test_p_holm": 1.0
+    },
+    {
+      "reference": "fedavg",
+      "method": "heterofl",
+      "seeds": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "paired_macro_f1_delta_mean": -1.5599998634430178e-06,
+      "paired_macro_f1_delta_ci95_low": -0.002251339945337433,
+      "paired_macro_f1_delta_ci95_high": 0.0022482199456105474,
+      "paired_t_test_p_unadjusted": 0.9985563400477799,
+      "paired_t_test_p_holm": 1.0
+    },
+    {
+      "reference": "fedavg",
+      "method": "fedrolex",
+      "seeds": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "paired_macro_f1_delta_mean": -0.0002172258824773454,
+      "paired_macro_f1_delta_ci95_low": -0.0008202449322344562,
+      "paired_macro_f1_delta_ci95_high": 0.00038579316727976545,
+      "paired_t_test_p_unadjusted": 0.373900966300059,
+      "paired_t_test_p_holm": 1.0
+    },
+    {
+      "reference": "fedavg",
+      "method": "maxnet",
+      "seeds": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "paired_macro_f1_delta_mean": -0.003966357775868101,
+      "paired_macro_f1_delta_ci95_low": -0.012682645823294734,
+      "paired_macro_f1_delta_ci95_high": 0.004749930271558532,
+      "paired_t_test_p_unadjusted": 0.27512330716054273,
+      "paired_t_test_p_holm": 1.0
+    },
+    {
+      "reference": "fedavg",
+      "method": "cc_efl",
+      "seeds": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "paired_macro_f1_delta_mean": -0.0037244009064683835,
+      "paired_macro_f1_delta_ci95_low": -0.012367244104637288,
+      "paired_macro_f1_delta_ci95_high": 0.00491844229170052,
+      "paired_t_test_p_unadjusted": 0.2976605910416653,
+      "paired_t_test_p_holm": 1.0
+    },
+    {
+      "reference": "fedavg",
+      "method": "cc_efl_no_prox",
+      "seeds": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "paired_macro_f1_delta_mean": -0.0037244009064683835,
+      "paired_macro_f1_delta_ci95_low": -0.012367244104637288,
+      "paired_macro_f1_delta_ci95_high": 0.00491844229170052,
+      "paired_t_test_p_unadjusted": 0.2976605910416653,
+      "paired_t_test_p_holm": 1.0
+    },
+    {
+      "reference": "fedavg",
+      "method": "cc_efl_uniform",
+      "seeds": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "paired_macro_f1_delta_mean": -0.0002172258824773454,
+      "paired_macro_f1_delta_ci95_low": -0.0008202449322344562,
+      "paired_macro_f1_delta_ci95_high": 0.00038579316727976545,
+      "paired_t_test_p_unadjusted": 0.373900966300059,
+      "paired_t_test_p_holm": 1.0
+    },
+    {
+      "reference": "fedavg",
+      "method": "cc_efl_random_window",
+      "seeds": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "paired_macro_f1_delta_mean": -0.0037244009064683835,
+      "paired_macro_f1_delta_ci95_low": -0.012367244104637288,
+      "paired_macro_f1_delta_ci95_high": 0.00491844229170052,
+      "paired_t_test_p_unadjusted": 0.2976605910416653,
+      "paired_t_test_p_holm": 1.0
+    }
+  ]
+}

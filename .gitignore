@@ -34,6 +34,10 @@ node_modules/
 non_medical_benchmark/demo_site/
 server/models/
 
+# Local scratch outputs
+/tmp/
+/tmp_phase3_update/
+
 # Database (auto-recreated on server start)
 server/database.json
 server/database.json.tmp
