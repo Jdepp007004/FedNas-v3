@@ -108,6 +108,7 @@ def _http_error(status: int, detail: str):
 
 class JoinRequest(BaseModel):
     hardware_profile: dict
+    dataset_meta: dict | None = None
 
 
 class UpdateRequest(BaseModel):
@@ -178,6 +179,22 @@ async def join_project(
         raise _http_error(403, "Project is not accepting new clients.")
 
     user_id = current_user["sub"]
+    dataset_meta = payload.dataset_meta
+    if dataset_meta is not None:
+        submitted_columns = dataset_meta.get("column_names")
+        if not isinstance(submitted_columns, list) or not all(isinstance(column, str) for column in submitted_columns):
+            raise _http_error(422, "Attach a CSV and include its column names before requesting project access.")
+        required_columns = (
+            list(proj.get("task_config", {}).get("feature_columns", []))
+            + [proj.get("task_config", {}).get("target_column")]
+            if proj.get("model_family") == "elastic_tabular"
+            else list(proj.get("data_schema", {}).get("required_columns", SERVER_SCHEMA.get("required_columns", [])))
+        )
+        missing_columns = [column for column in required_columns if column and column not in submitted_columns]
+        if missing_columns:
+            preview = ", ".join(missing_columns[:8])
+            suffix = "…" if len(missing_columns) > 8 else ""
+            raise _http_error(422, f"The attached CSV is missing required columns: {preview}{suffix}")
     hardware_profile = normalise_hardware_profile(payload.hardware_profile)
     model_config = proj.get("model_config", MODEL_CONFIG) or MODEL_CONFIG
     recommended_depth = depth_for_profile(hardware_profile, model_config.get("max_depth", MODEL_CONFIG["max_depth"]))
@@ -192,6 +209,16 @@ async def join_project(
         "hardware_profile": hardware_profile,
         "last_seen": dt.datetime.now(dt.timezone.utc).isoformat(),
     }
+    if dataset_meta is not None:
+        profile_map[user_id]["dataset_meta"] = {
+            "filename": os.path.basename(str(dataset_meta.get("filename") or "dataset.csv")),
+            "rows": max(0, int(dataset_meta.get("rows") or 0)),
+            "columns": max(0, int(dataset_meta.get("columns") or len(dataset_meta.get("column_names", [])))),
+            "size_bytes": max(0, int(dataset_meta.get("size_bytes") or 0)),
+            "sha256": dataset_meta.get("sha256"),
+            "local_only": True,
+            "updated_at": dt.datetime.now(dt.timezone.utc).isoformat(),
+        }
     if user_id not in pending and user_id not in connected:
         pending.append(user_id)
     update_project(proj_id, {"pending_clients": pending, "client_profiles": profile_map})

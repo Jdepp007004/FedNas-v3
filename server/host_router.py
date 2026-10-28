@@ -14,13 +14,14 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from fastapi import APIRouter, Depends, File, Form, UploadFile
+from fastapi import APIRouter, Depends, File, Form, Header, UploadFile
 from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel
 
 from db_handler import get_project, read_db, update_project, write_db
 from live_state import build_project_snapshot
 from project_router import approve_project_client, set_val_dataloader
+from auth_router import verify_jwt
 from shared.model_schema import REQUIRED_COLUMNS, SERVER_SCHEMA
 
 router = APIRouter(prefix="/api/host", tags=["host"])
@@ -152,6 +153,7 @@ async def host_projects(_: dict = Depends(_require_host)):
         "model_family": project.get("model_family", "clinical_multitask"),
         "task_config": project.get("task_config", {}),
         "supernet_initialization": project.get("supernet_initialization", {"source": "built_in_default"}),
+        "project_status": project.get("project_status", "active"),
     } for project in db.get("projects", [])]
 
 
@@ -165,6 +167,8 @@ async def create_tabular_project(
     max_width: int = Form(64),
     file: UploadFile = File(...),
     supernet_file: UploadFile | None = File(None),
+    review_pending: bool = False,
+    creator_id: str | None = None,
     _: dict = Depends(_require_host),
 ):
     """Create a self-serve classification or regression workspace from CSV."""
@@ -259,8 +263,11 @@ async def create_tabular_project(
         "momentum_beta": 0.0,
         "max_depth": model_config["max_depth"],
         "recommended_depth": model_config["max_depth"],
-        "accepting_clients": True,
+        "accepting_clients": not review_pending,
         "created_at": _now(),
+        "project_status": "pending_approval" if review_pending else "active",
+        "creator_id": creator_id if review_pending else None,
+        "request_submitted_at": _now() if review_pending else None,
         "dataset": {
             "filename": filename,
             "rows": int(len(frame)),
@@ -291,6 +298,149 @@ async def create_tabular_project(
         "max_width": model_config["max_width"],
         "supernet_initialization": initialization,
     })
+
+
+@router.post("/project-requests/tabular")
+async def submit_tabular_project_request(
+    name: str = Form(...),
+    task_type: str = Form(...),
+    target_column: str = Form(...),
+    class_labels: str = Form(""),
+    max_depth: int = Form(3),
+    max_width: int = Form(64),
+    file: UploadFile = File(...),
+    supernet_file: UploadFile | None = File(None),
+    authorization: str | None = Header(None),
+):
+    """Prepare a participant-submitted project and hold it for host review."""
+    if not authorization or not authorization.startswith("Bearer "):
+        raise _http_error(401, "Connect as a participant before submitting a project request.")
+    try:
+        claims = verify_jwt(authorization.split(" ", 1)[1])
+    except ValueError as exc:
+        raise _http_error(401, str(exc)) from exc
+    if claims.get("role") != "participant":
+        raise _http_error(403, "Only a participant session can submit a project request.")
+    if supernet_file is None or not supernet_file.filename:
+        raise _http_error(422, "Upload the starting supermodel weights or an exported model ZIP with the project request.")
+
+    result = await create_tabular_project(
+        name=name,
+        task_type=task_type,
+        target_column=target_column,
+        class_labels=class_labels,
+        max_depth=max_depth,
+        max_width=max_width,
+        file=file,
+        supernet_file=supernet_file,
+        review_pending=True,
+        creator_id=claims.get("sub"),
+        _=claims,
+    )
+    details = json.loads(result.body)
+    return JSONResponse(status_code=202, content={
+        "status": "pending_approval",
+        "request_id": details["proj_id"],
+        "name": details["name"],
+        "task_type": details["task_type"],
+        "target_column": details["target_column"],
+        "feature_count": details["feature_count"],
+        "classes": details["classes"],
+        "max_depth": details["max_depth"],
+        "max_width": details["max_width"],
+        "supernet_initialization": details["supernet_initialization"],
+    })
+
+
+@router.get("/project-requests")
+async def list_project_requests(_: dict = Depends(_require_host)):
+    """Return pending project proposals for the server review queue."""
+    db = read_db()
+    requests = []
+    for project in db.get("projects", []):
+        if project.get("project_status") != "pending_approval":
+            continue
+        creator_id = project.get("creator_id")
+        creator = next((user for user in db.get("users", []) if user.get("user_id") == creator_id), {})
+        requests.append({
+            "proj_id": project.get("proj_id"),
+            "name": project.get("name"),
+            "description": project.get("description", ""),
+            "model_family": project.get("model_family"),
+            "task_config": project.get("task_config", {}),
+            "model_config": project.get("model_config", {}),
+            "data_schema": project.get("data_schema", {}),
+            "dataset": project.get("dataset", {}),
+            "supernet_initialization": project.get("supernet_initialization", {}),
+            "request_submitted_at": project.get("request_submitted_at"),
+            "creator_name": creator.get("hospital_name") or creator.get("username") or "Participant",
+        })
+    return requests
+
+
+@router.post("/project-requests/{proj_id}/approve")
+async def approve_project_request(proj_id: str, _: dict = Depends(_require_host)):
+    project = get_project(proj_id)
+    if project is None:
+        raise _http_error(404, "Project request not found.")
+    if project.get("project_status") != "pending_approval":
+        raise _http_error(409, "This project request has already been reviewed.")
+    update_project(proj_id, {
+        "project_status": "active",
+        "accepting_clients": True,
+        "request_reviewed_at": _now(),
+    })
+    return {"status": "approved", "proj_id": proj_id}
+
+
+@router.post("/project-requests/{proj_id}/reject")
+async def reject_project_request(proj_id: str, _: dict = Depends(_require_host)):
+    project = get_project(proj_id)
+    if project is None:
+        raise _http_error(404, "Project request not found.")
+    if project.get("project_status") != "pending_approval":
+        raise _http_error(409, "This project request has already been reviewed.")
+    update_project(proj_id, {
+        "project_status": "rejected",
+        "accepting_clients": False,
+        "request_reviewed_at": _now(),
+    })
+    return {"status": "rejected", "proj_id": proj_id}
+
+
+@router.get("/benchmarks")
+async def benchmark_summary(_: dict = Depends(_require_host)):
+    """Return the checked-in tabular reference benchmark, if available."""
+    benchmark_path = Path(__file__).resolve().parent.parent / ".benchmarks" / "tabular_web_method" / "breast_cancer_4client.json"
+    if not benchmark_path.is_file():
+        return {"available": False, "runs": []}
+    try:
+        report = json.loads(benchmark_path.read_text(encoding="utf-8"))
+        methods = {}
+        for run in report.get("runs", []):
+            method = run.get("method", "Unknown")
+            values = methods.setdefault(method, {"accuracy": [], "macro_f1": [], "seconds": []})
+            for source, target in (("capacity_selected_test_accuracy", "accuracy"), ("capacity_selected_test_macro_f1", "macro_f1"), ("wall_seconds_rounds", "seconds")):
+                value = run.get(source)
+                if isinstance(value, (int, float)):
+                    values[target].append(float(value))
+        return {
+            "available": True,
+            "benchmark": report.get("benchmark"),
+            "dataset": report.get("dataset"),
+            "rounds": report.get("settings", {}).get("rounds"),
+            "seeds": report.get("settings", {}).get("seeds", []),
+            "limitations": report.get("limitations", []),
+            "methods": [{
+                "name": name,
+                "accuracy": sum(values["accuracy"]) / len(values["accuracy"]) if values["accuracy"] else None,
+                "macro_f1": sum(values["macro_f1"]) / len(values["macro_f1"]) if values["macro_f1"] else None,
+                "seconds": sum(values["seconds"]) / len(values["seconds"]) if values["seconds"] else None,
+                "runs": len(values["accuracy"]),
+            } for name, values in methods.items()],
+        }
+    except (OSError, json.JSONDecodeError, TypeError):
+        return {"available": False, "runs": []}
 
 
 @router.get("/projects/{proj_id}/state")

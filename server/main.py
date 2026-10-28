@@ -206,7 +206,13 @@ async def metrics_endpoint():
 
 @app.get("/dashboard", response_class=HTMLResponse)
 async def dashboard(request: Request):
-    """GET /dashboard — Jinja2 server operator dashboard."""
+    """GET /dashboard — the server's interactive project board."""
+    return templates.TemplateResponse("host.html", {"request": request})
+
+
+@app.get("/dashboard/summary", response_class=HTMLResponse)
+async def dashboard_summary(request: Request):
+    """Legacy read-only summary dashboard."""
     db = read_db()
     try:
         tunnel_url = get_tunnel_url()
@@ -251,11 +257,17 @@ async def simulation(request: Request):
     return templates.TemplateResponse("simulation.html", {"request": request})
 
 
+@app.get("/walkthrough", response_class=HTMLResponse)
+async def guided_walkthrough(request: Request):
+    """Guided product walkthrough across client and server workspaces."""
+    return templates.TemplateResponse("demo.html", {"request": request})
+
+
 @app.get("/demo", response_class=HTMLResponse)
 async def demo_redirect(request: Request):
-    """Backward-compat redirect to /simulation."""
+    """Keep the older entry URL pointing to the guided walkthrough."""
     from fastapi.responses import RedirectResponse
-    return RedirectResponse(url="/simulation", status_code=301)
+    return RedirectResponse(url="/walkthrough", status_code=301)
 
 
 # ─── Entry point ──────────────────────────────────────────────────────────────
